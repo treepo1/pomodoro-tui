@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+            artifact: pomotui-darwin-arm64
+          - os: macos-13
+            target: darwin-x64
+            artifact: pomotui-darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+            artifact: pomotui-linux-x64
+          - os: windows-latest
+            target: windows-x64
+            artifact: pomotui-windows-x64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build executable
+        run: bun build src/index.tsx --compile --outfile ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/pomotui-darwin-arm64/pomotui-darwin-arm64
+            artifacts/pomotui-darwin-x64/pomotui-darwin-x64
+            artifacts/pomotui-linux-x64/pomotui-linux-x64
+            artifacts/pomotui-windows-x64.exe/pomotui-windows-x64.exe
+          generate_release_notes: true
