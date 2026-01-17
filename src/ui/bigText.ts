@@ -1,83 +1,83 @@
 // ASCII art digits for retro big timer display
-// Each digit is 5 lines tall
+// Each digit is 4 chars wide x 5 lines tall
 
 const DIGITS: Record<string, string[]> = {
   "0": [
-    " ███ ",
-    "█   █",
-    "█   █",
-    "█   █",
-    " ███ ",
+    "████",
+    "█  █",
+    "█  █",
+    "█  █",
+    "████",
   ],
   "1": [
-    "  █  ",
-    " ██  ",
-    "  █  ",
-    "  █  ",
-    " ███ ",
+    "  █ ",
+    " ██ ",
+    "  █ ",
+    "  █ ",
+    "████",
   ],
   "2": [
-    " ███ ",
-    "█   █",
-    "  ██ ",
-    " █   ",
-    "█████",
+    "████",
+    "   █",
+    "████",
+    "█   ",
+    "████",
   ],
   "3": [
-    " ███ ",
-    "█   █",
-    "  ██ ",
-    "█   █",
-    " ███ ",
+    "████",
+    "   █",
+    "████",
+    "   █",
+    "████",
   ],
   "4": [
-    "█   █",
-    "█   █",
-    "█████",
-    "    █",
-    "    █",
+    "█  █",
+    "█  █",
+    "████",
+    "   █",
+    "   █",
   ],
   "5": [
-    "█████",
-    "█    ",
-    "████ ",
-    "    █",
-    "████ ",
+    "████",
+    "█   ",
+    "████",
+    "   █",
+    "████",
   ],
   "6": [
-    " ███ ",
-    "█    ",
-    "████ ",
-    "█   █",
-    " ███ ",
+    "████",
+    "█   ",
+    "████",
+    "█  █",
+    "████",
   ],
   "7": [
-    "█████",
-    "    █",
-    "   █ ",
-    "  █  ",
-    "  █  ",
+    "████",
+    "   █",
+    "  █ ",
+    " █  ",
+    " █  ",
   ],
   "8": [
-    " ███ ",
-    "█   █",
-    " ███ ",
-    "█   █",
-    " ███ ",
+    "████",
+    "█  █",
+    "████",
+    "█  █",
+    "████",
   ],
   "9": [
-    " ███ ",
-    "█   █",
-    " ████",
-    "    █",
-    " ███ ",
+    "████",
+    "█  █",
+    "████",
+    "   █",
+    "████",
   ],
   ":": [
-    "     ",
-    "  █  ",
-    "     ",
-    "  █  ",
-    "     ",
+    "    ",
+    " ██ ",
+    "    ",
+    " ██ ",
+    "    ",
   ],
 };
 
@@ -93,10 +93,12 @@ export function renderBigText(text: string): string[] {
     }
   }
 
-  return lines;
+  // Find max length and pad all lines to same width, then trim end once
+  const maxLen = Math.max(...lines.map((l) => l.trimEnd().length));
+  return lines.map((line) => line.trimEnd().padEnd(maxLen));
 }
 
 export function getBigTextWidth(text: string): number {
-  // Each character is 5 wide + 1 space
-  return text.length * 6;
+  // Each character is 4 wide + 1 space
+  return text.length * 5;
 }

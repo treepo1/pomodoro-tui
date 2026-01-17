@@ -70,6 +70,7 @@ export class Pomodoro {
     this.timer = setInterval(() => {
       this.tick();
     }, 1000);
+    this.onTick?.(this.getState());
   }
 
   pause(): void {
@@ -80,6 +81,7 @@ export class Pomodoro {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.onTick?.(this.getState());
   }
 
   reset(): void {
