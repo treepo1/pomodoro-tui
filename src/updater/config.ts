@@ -1,4 +1,5 @@
 import type { PlatformInfo } from "./types";
+import { version } from "../../package.json";
 
 export const GITHUB_REPO = "treepo1/pomodoro-tui";
 export const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
@@ -51,6 +52,5 @@ export function getPlatformInfo(): PlatformInfo {
 }
 
 export function getCurrentVersion(): string {
-  // Read from package.json at build time - Bun embeds this
-  return "0.0.8";
+  return version;
 }
