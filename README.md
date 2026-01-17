@@ -7,7 +7,7 @@ A terminal-based Pomodoro timer with lofi music integration, built with Bun, Ink
 - Full-screen TUI with progress bar and session tracking
 - Configurable work/break durations
 - Lofi radio streaming during work sessions
-- Optional Spotify "now playing" display
+- Collaborative jam sessions for real-time multiplayer pomodoro
 - Session history saved to JSON (for Obsidian/tool integration)
 - Cross-platform notification sounds
 
@@ -101,8 +101,10 @@ bun run start -d ~/obsidian/pomodoro.json
 | `--long <min>` | `-l` | Long break duration | 15 |
 | `--cycles <n>` | `-c` | Pomodoros before long break | 4 |
 | `--data <path>` | `-d` | History file path | ~/.pomodoro/history.json |
-| `--music <mode>` | `-m` | Music mode: radio, spotify, off | radio |
-| `--spotify-token` | | Spotify access token | |
+| `--music <mode>` | `-m` | Music mode: radio, off | radio |
+| `--host` | | Host a jam session | |
+| `--join <code>` | | Join a jam session | |
+| `--name <name>` | | Your name in jam sessions | User |
 | `--help` | `-h` | Show help | |
 
 ## Keyboard Controls
@@ -130,17 +132,24 @@ The app includes 5 curated lofi radio stations:
 
 Music automatically plays during work sessions and pauses during breaks.
 
-### Spotify Integration
+## Jam Sessions
 
-To display your currently playing Spotify track:
+Work together with friends in real-time collaborative pomodoro sessions:
 
-1. Get a Spotify access token from [Spotify Developer Dashboard](https://developer.spotify.com/)
-2. Run with the token:
 ```bash
-bun run start -m spotify --spotify-token YOUR_TOKEN
+# Host a session
+pomotui --host --name "Alice"
+# Output shows: JAM SESSION: XYZ234
+
+# Join a session (on another computer)
+pomotui --join XYZ234 --name "Bob"
 ```
 
-Note: This only displays the current track; it doesn't control playback.
+Features:
+- Real-time timer sync across all participants
+- Host controls the timer (start/pause/reset/skip)
+- Automatic host transfer when host leaves
+- Manual host transfer via `[1-9]` keys
 
 ## History File
 

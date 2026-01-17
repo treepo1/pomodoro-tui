@@ -179,128 +179,20 @@ export class RadioPlayer {
   }
 }
 
-export interface SpotifyTrack {
-  name: string;
-  artist: string;
-  album: string;
-  isPlaying: boolean;
-}
-
-export class SpotifyDisplay {
-  private accessToken: string | null = null;
-  private currentTrack: SpotifyTrack | null = null;
-  private pollInterval: ReturnType<typeof setInterval> | null = null;
-
-  constructor(accessToken?: string) {
-    if (accessToken) {
-      this.accessToken = accessToken;
-    }
-  }
-
-  setAccessToken(token: string): void {
-    this.accessToken = token;
-  }
-
-  async getCurrentTrack(): Promise<SpotifyTrack | null> {
-    if (!this.accessToken) {
-      return null;
-    }
-
-    try {
-      const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
-      });
-
-      if (response.status === 204 || response.status === 401) {
-        return null;
-      }
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-
-      if (!data || !data.item) {
-        return null;
-      }
-
-      this.currentTrack = {
-        name: data.item.name,
-        artist: data.item.artists.map((a: { name: string }) => a.name).join(', '),
-        album: data.item.album.name,
-        isPlaying: data.is_playing,
-      };
-
-      return this.currentTrack;
-    } catch {
-      return null;
-    }
-  }
-
-  startPolling(callback: (track: SpotifyTrack | null) => void, intervalMs: number = 5000): void {
-    this.stopPolling();
-
-    // Initial fetch
-    this.getCurrentTrack().then(callback);
-
-    // Poll periodically
-    this.pollInterval = setInterval(async () => {
-      const track = await this.getCurrentTrack();
-      callback(track);
-    }, intervalMs);
-  }
-
-  stopPolling(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-  }
-
-  getCachedTrack(): SpotifyTrack | null {
-    return this.currentTrack;
-  }
-
-  isConfigured(): boolean {
-    return this.accessToken !== null;
-  }
-}
-
-export type MusicMode = 'radio' | 'spotify' | 'off';
+export type MusicMode = 'radio' | 'off';
 
 export class MusicManager {
   private mode: MusicMode;
   private radio: RadioPlayer;
-  private spotify: SpotifyDisplay;
-  private onStatusChange: ((status: string) => void) | null = null;
 
-  constructor(mode: MusicMode = 'radio', spotifyToken?: string) {
+  constructor(mode: MusicMode = 'radio') {
     this.mode = mode;
     this.radio = new RadioPlayer();
-    this.spotify = new SpotifyDisplay(spotifyToken);
-
-    if (mode === 'spotify' && spotifyToken) {
-      this.spotify.startPolling((track) => {
-        if (this.onStatusChange && track) {
-          this.onStatusChange(`${track.name} - ${track.artist}`);
-        }
-      });
-    }
-  }
-
-  setOnStatusChange(callback: (status: string) => void): void {
-    this.onStatusChange = callback;
   }
 
   async play(): Promise<boolean> {
     if (this.mode === 'off') return false;
-    if (this.mode === 'radio') {
-      return this.radio.play();
-    }
-    return false; // Spotify mode doesn't control playback
+    return this.radio.play();
   }
 
   stop(): void {
@@ -335,16 +227,6 @@ export class MusicManager {
       return 'Music: Off';
     }
 
-    if (this.mode === 'spotify') {
-      const track = this.spotify.getCachedTrack();
-      if (track && track.isPlaying) {
-        const name = track.name.length > 20 ? track.name.substring(0, 17) + '...' : track.name;
-        const artist = track.artist.length > 15 ? track.artist.substring(0, 12) + '...' : track.artist;
-        return `♪ ${name} - ${artist}`;
-      }
-      return '♪ Spotify: Not playing';
-    }
-
     // Radio mode
     const status = this.radio.getStatus();
     const icon = status.isPlaying ? '♪' : '♪';
@@ -360,10 +242,6 @@ export class MusicManager {
     if (this.mode === 'radio') {
       return this.radio.getStatus().isPlaying;
     }
-    if (this.mode === 'spotify') {
-      const track = this.spotify.getCachedTrack();
-      return track?.isPlaying ?? false;
-    }
     return false;
   }
 
@@ -376,6 +254,5 @@ export class MusicManager {
 
   cleanup(): void {
     this.radio.stop();
-    this.spotify.stopPolling();
   }
 }

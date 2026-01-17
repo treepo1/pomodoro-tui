@@ -26,7 +26,6 @@ interface AppConfig {
   pomodoro: PomodoroConfig;
   historyFile?: string;
   musicMode: MusicMode;
-  spotifyToken?: string;
   jam: JamConfig;
 }
 
@@ -42,8 +41,7 @@ Options:
   -l, --long <minutes>     Long break duration (default: ${DEFAULT_CONFIG.longBreakDuration})
   -c, --cycles <number>    Pomodoros before long break (default: ${DEFAULT_CONFIG.pomodorosBeforeLongBreak})
   -d, --data <path>        Path to history JSON file (default: ~/.pomodoro/history.json)
-  -m, --music <mode>       Music mode: radio, spotify, off (default: radio)
-  --spotify-token <token>  Spotify access token for now-playing display
+  -m, --music <mode>       Music mode: radio, off (default: radio)
   -h, --help               Show this help message
 
 Jam Session (collaborative mode):
@@ -58,7 +56,6 @@ Examples:
   pomotui --work 45                    # 45min work sessions
   pomotui -d ~/obsidian/pomodoro.json  # Custom history file
   pomotui -m off                       # Disable music
-  pomotui -m spotify --spotify-token <token>  # Spotify mode
   pomotui --host --name "Alice"        # Host a jam session
   pomotui --join XYZ234 --name "Bob"   # Join a jam session
 
@@ -88,7 +85,6 @@ function parseConfig(): AppConfig | null {
         cycles: { type: "string", short: "c" },
         data: { type: "string", short: "d" },
         music: { type: "string", short: "m" },
-        "spotify-token": { type: "string" },
         help: { type: "boolean", short: "h" },
         // Jam session options
         host: { type: "boolean" },
@@ -144,8 +140,8 @@ function parseConfig(): AppConfig | null {
 
     let musicMode: MusicMode = "radio";
     if (values.music) {
-      if (!["radio", "spotify", "off"].includes(values.music)) {
-        console.error("Error: Music mode must be one of: radio, spotify, off");
+      if (!["radio", "off"].includes(values.music)) {
+        console.error("Error: Music mode must be one of: radio, off");
         process.exit(1);
       }
       musicMode = values.music as MusicMode;
@@ -182,7 +178,6 @@ function parseConfig(): AppConfig | null {
       pomodoro,
       historyFile: values.data,
       musicMode,
-      spotifyToken: values["spotify-token"],
       jam,
     };
   } catch (error) {
@@ -255,9 +250,7 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
   const { exit } = useApp();
   const [pomodoro] = useState(() => new Pomodoro(config.pomodoro));
   const [history] = useState(() => new HistoryManager(config.historyFile));
-  const [music] = useState(
-    () => new MusicManager(config.musicMode, config.spotifyToken),
-  );
+  const [music] = useState(() => new MusicManager(config.musicMode));
   const [state, setState] = useState<PomodoroState>(pomodoro.getState());
   const [todayStats, setTodayStats] = useState(history.getTodayStats());
   const [musicStatus, setMusicStatus] = useState(music.getStatusText());
