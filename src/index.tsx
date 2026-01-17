@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import { DEFAULT_CONFIG } from "./types";
 import { checkForUpdates, performUpdate, getCurrentVersion } from "./updater";
+import { renderBigText } from "./ui";
 
 interface JamConfig {
   enabled: boolean;
@@ -81,7 +82,9 @@ async function handleUpdateCommand(): Promise<void> {
   try {
     await performUpdate();
   } catch (error) {
-    console.error(`Update failed: ${error instanceof Error ? error.message : error}`);
+    console.error(
+      `Update failed: ${error instanceof Error ? error.message : error}`,
+    );
     process.exit(1);
   }
   process.exit(0);
@@ -217,9 +220,9 @@ function parseConfig(): AppConfig | null {
 function getSessionColor(session: SessionType): string {
   switch (session) {
     case "work":
-      return "red";
-    case "shortBreak":
       return "green";
+    case "shortBreak":
+      return "cyan";
     case "longBreak":
       return "blue";
   }
@@ -263,14 +266,21 @@ function notifyUser(): void {
       // Use SystemSounds which is locale-independent
       Bun.spawn(
         ["powershell", "-c", "[System.Media.SystemSounds]::Asterisk.Play()"],
-        { stdout: "ignore", stderr: "ignore" }
+        { stdout: "ignore", stderr: "ignore" },
       );
     } else {
       // Linux - try paplay first, fall back to aplay
-      Bun.spawn(["sh", "-c", "paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null || aplay /usr/share/sounds/alsa/Front_Center.wav 2>/dev/null || true"], {
-        stdout: "ignore",
-        stderr: "ignore",
-      });
+      Bun.spawn(
+        [
+          "sh",
+          "-c",
+          "paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null || aplay /usr/share/sounds/alsa/Front_Center.wav 2>/dev/null || true",
+        ],
+        {
+          stdout: "ignore",
+          stderr: "ignore",
+        },
+      );
     }
   } catch {
     // Ignore errors if sound fails to play
@@ -297,7 +307,9 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
   const [jamConnectionState, setJamConnectionState] =
     useState<JamConnectionState>("disconnected");
   const [jamSessionCode, setJamSessionCode] = useState<string>("");
-  const [isCurrentHost, setIsCurrentHost] = useState<boolean>(config.jam.isHost);
+  const [isCurrentHost, setIsCurrentHost] = useState<boolean>(
+    config.jam.isHost,
+  );
 
   // Refs to access current values in useInput callback (avoids stale closure)
   const jamManagerRef = useRef<JamManager | null>(null);
@@ -305,9 +317,15 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
   const isCurrentHostRef = useRef<boolean>(config.jam.isHost);
 
   // Keep refs in sync with state
-  useEffect(() => { jamManagerRef.current = jamManager; }, [jamManager]);
-  useEffect(() => { jamParticipantsRef.current = jamParticipants; }, [jamParticipants]);
-  useEffect(() => { isCurrentHostRef.current = isCurrentHost; }, [isCurrentHost]);
+  useEffect(() => {
+    jamManagerRef.current = jamManager;
+  }, [jamManager]);
+  useEffect(() => {
+    jamParticipantsRef.current = jamParticipants;
+  }, [jamParticipants]);
+  useEffect(() => {
+    isCurrentHostRef.current = isCurrentHost;
+  }, [isCurrentHost]);
 
   const isJamMode = config.jam.enabled;
   const canControl = !isJamMode || isCurrentHost;
@@ -411,7 +429,7 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
       if (amHost && manager) {
         const myId = manager.getParticipantId();
         const otherParticipants = participants.filter(
-          p => p.id !== myId && !p.isHost
+          (p) => p.id !== myId && !p.isHost,
         );
         const index = parseInt(input, 10) - 1;
         if (index < otherParticipants.length) {
@@ -448,6 +466,9 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
 
   const connDisplay = getConnectionDisplay();
 
+  // Render big ASCII timer
+  const bigTimeLines = renderBigText(time);
+
   return (
     <Box
       flexDirection="column"
@@ -457,9 +478,6 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
       borderColor="cyan"
       padding={1}
     >
-      <Text bold color="white">
-        POMODORO TIMER
-      </Text>
       {updateAvailable && (
         <Box marginY={1} flexDirection="column" alignItems="center">
           <Text color="yellow">Update available: {updateAvailable}</Text>
@@ -468,11 +486,15 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
       )}
       <Box marginY={1}>
         <Text bold color={color}>
-          {label}
+          [ {label} ]
         </Text>
       </Box>
-      <Box marginY={1}>
-        <Text bold color="white">{`     ${time}     `}</Text>
+      <Box marginY={1} flexDirection="column" alignItems="center">
+        {bigTimeLines.map((line, i) => (
+          <Text key={i} bold color="green">
+            {line}
+          </Text>
+        ))}
       </Box>
       <Box marginY={1}>
         <Text color={color}>{progressBar}</Text>
@@ -487,7 +509,9 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
       {isJamMode && (
         <>
           <Box marginY={1} flexDirection="column" alignItems="center">
-            <Text color="yellow" bold>{`JAM SESSION: ${jamSessionCode}`}</Text>
+            <Text color="yellow" bold>
+              JAM SESSION: {jamSessionCode}
+            </Text>
             <Box>
               <Text color={connDisplay.color as any}>
                 {connDisplay.symbol} {connDisplay.text}
@@ -497,10 +521,12 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
 
           {jamParticipants.length > 0 && (
             <Box marginY={1} flexDirection="column" alignItems="center">
-              <Text color="gray">{`Participants (${jamParticipants.length}):`}</Text>
+              <Text color="gray">Participants ({jamParticipants.length}):</Text>
               {(() => {
                 const myId = jamManager?.getParticipantId();
-                const otherParticipants = jamParticipants.filter(p => p.id !== myId);
+                const otherParticipants = jamParticipants.filter(
+                  (p) => p.id !== myId,
+                );
                 let transferIndex = 0;
                 return jamParticipants.map((p) => {
                   const isMe = p.id === myId;
@@ -508,7 +534,12 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
                   const transferNum = canTransferTo ? ++transferIndex : 0;
                   return (
                     <Text key={p.id} color={isMe ? "cyan" : "white"}>
-                      {p.isHost ? "★" : canTransferTo ? `[${transferNum}]` : "•"} {p.name}
+                      {p.isHost
+                        ? "*"
+                        : canTransferTo
+                          ? `[${transferNum}]`
+                          : "-"}{" "}
+                      {p.name}
                       {p.isHost ? " (host)" : ""}
                       {isMe ? " (you)" : ""}
                     </Text>
@@ -536,27 +567,33 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
 
       {!isJamMode && (
         <Box marginY={1}>
-          <Text color="gray">{`Today: ${todayStats.pomodoros} pomodoros (${todayStats.totalMinutes}m)`}</Text>
+          <Text color="gray">
+            Today: {todayStats.pomodoros} pomodoros ({todayStats.totalMinutes}m)
+          </Text>
         </Box>
       )}
       <Box marginY={1}>
         <Text color="gray">
-          {`Work: ${config.pomodoro.workDuration}m | Short: ${config.pomodoro.shortBreakDuration}m | Long: ${config.pomodoro.longBreakDuration}m`}
+          Work: {config.pomodoro.workDuration}m | Short:{" "}
+          {config.pomodoro.shortBreakDuration}m | Long:{" "}
+          {config.pomodoro.longBreakDuration}m
         </Text>
       </Box>
       <Box marginY={1}>
         <Text color="magenta">{musicStatus}</Text>
       </Box>
       <Box marginTop={1}>
-        <Text color="cyan">
+        <Text color="green">
           {canControl
-            ? `[s]tart [p]ause [r]eset [n]ext [q]uit [m]usic [>/.]station`
-            : `[q]uit [m]usic [>/.]station`}
+            ? `[S]tart [P]ause [R]eset [N]ext [Q]uit [M]usic [>]station`
+            : `[Q]uit [M]usic [>]station`}
         </Text>
       </Box>
       {isCurrentHost && jamParticipants.length > 1 && (
         <Box>
-          <Text color="gray">[1-9] transfer host</Text>
+          <Text color="green" dimColor>
+            [1-9] transfer host
+          </Text>
         </Box>
       )}
     </Box>
