@@ -1,6 +1,98 @@
 import blessed from 'blessed';
+import { parseArgs } from 'util';
 import { Pomodoro } from './pomodoro';
-import type { PomodoroState, SessionType } from './types';
+import type { PomodoroConfig, PomodoroState, SessionType } from './types';
+import { DEFAULT_CONFIG } from './types';
+
+function showHelp(): void {
+  console.log(`
+Pomodoro Timer - A TUI pomodoro timer
+
+Usage: bun run start [options]
+
+Options:
+  -w, --work <minutes>     Work session duration (default: ${DEFAULT_CONFIG.workDuration})
+  -s, --short <minutes>    Short break duration (default: ${DEFAULT_CONFIG.shortBreakDuration})
+  -l, --long <minutes>     Long break duration (default: ${DEFAULT_CONFIG.longBreakDuration})
+  -c, --cycles <number>    Pomodoros before long break (default: ${DEFAULT_CONFIG.pomodorosBeforeLongBreak})
+  -h, --help               Show this help message
+
+Examples:
+  bun run start                     # Use default durations (25/5/15)
+  bun run start -w 50 -s 10 -l 30   # 50min work, 10min short, 30min long
+  bun run start --work 45           # 45min work sessions
+
+Controls:
+  [s] Start    [p] Pause    [r] Reset    [n] Next    [q] Quit
+`);
+}
+
+function parseConfig(): PomodoroConfig | null {
+  try {
+    const { values } = parseArgs({
+      args: Bun.argv.slice(2),
+      options: {
+        work: { type: 'string', short: 'w' },
+        short: { type: 'string', short: 's' },
+        long: { type: 'string', short: 'l' },
+        cycles: { type: 'string', short: 'c' },
+        help: { type: 'boolean', short: 'h' },
+      },
+      strict: true,
+    });
+
+    if (values.help) {
+      showHelp();
+      return null;
+    }
+
+    const config: PomodoroConfig = { ...DEFAULT_CONFIG };
+
+    if (values.work) {
+      const work = parseInt(values.work, 10);
+      if (isNaN(work) || work < 1) {
+        console.error('Error: Work duration must be a positive number');
+        process.exit(1);
+      }
+      config.workDuration = work;
+    }
+
+    if (values.short) {
+      const short = parseInt(values.short, 10);
+      if (isNaN(short) || short < 1) {
+        console.error('Error: Short break duration must be a positive number');
+        process.exit(1);
+      }
+      config.shortBreakDuration = short;
+    }
+
+    if (values.long) {
+      const long = parseInt(values.long, 10);
+      if (isNaN(long) || long < 1) {
+        console.error('Error: Long break duration must be a positive number');
+        process.exit(1);
+      }
+      config.longBreakDuration = long;
+    }
+
+    if (values.cycles) {
+      const cycles = parseInt(values.cycles, 10);
+      if (isNaN(cycles) || cycles < 1) {
+        console.error('Error: Cycles must be a positive number');
+        process.exit(1);
+      }
+      config.pomodorosBeforeLongBreak = cycles;
+    }
+
+    return config;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Error: ${error.message}`);
+    }
+    console.error('Use --help for usage information');
+    process.exit(1);
+  }
+}
 
 class PomodoroTUI {
   private pomodoro: Pomodoro;
@@ -10,11 +102,10 @@ class PomodoroTUI {
   private progressBar: blessed.Widgets.ProgressBarElement;
   private statsBox: blessed.Widgets.BoxElement;
   private statusBox: blessed.Widgets.BoxElement;
-  private totalSeconds: number;
+  private configBox: blessed.Widgets.BoxElement;
 
-  constructor() {
-    this.pomodoro = new Pomodoro();
-    this.totalSeconds = this.pomodoro.getState().timeRemaining;
+  constructor(config: PomodoroConfig) {
+    this.pomodoro = new Pomodoro(config);
 
     // Create screen
     this.screen = blessed.screen({
@@ -28,7 +119,7 @@ class PomodoroTUI {
       top: 'center',
       left: 'center',
       width: 50,
-      height: 18,
+      height: 20,
       border: {
         type: 'line',
       },
@@ -68,13 +159,14 @@ class PomodoroTUI {
     });
 
     // Timer display
+    const initialTime = this.pomodoro.formatTime(this.pomodoro.getState().timeRemaining);
     this.timerBox = blessed.box({
       parent: mainBox,
       top: 4,
       left: 'center',
       width: 'shrink',
       height: 3,
-      content: this.getLargeTime('25:00'),
+      content: this.getLargeTime(initialTime),
       style: {
         fg: 'white',
         bold: true,
@@ -92,7 +184,7 @@ class PomodoroTUI {
       filled: 100,
       style: {
         bar: {
-          bg: 'green',
+          bg: 'red',
         },
       },
       ch: '█',
@@ -124,10 +216,24 @@ class PomodoroTUI {
       },
     });
 
+    // Config display
+    const cfg = this.pomodoro.getConfig();
+    this.configBox = blessed.box({
+      parent: mainBox,
+      top: 14,
+      left: 'center',
+      width: 'shrink',
+      height: 1,
+      content: `Work: ${cfg.workDuration}m | Short: ${cfg.shortBreakDuration}m | Long: ${cfg.longBreakDuration}m`,
+      style: {
+        fg: 'gray',
+      },
+    });
+
     // Controls help
     blessed.box({
       parent: mainBox,
-      top: 14,
+      top: 16,
       left: 'center',
       width: 'shrink',
       height: 1,
@@ -207,6 +313,7 @@ class PomodoroTUI {
     const time = this.pomodoro.formatTime(state.timeRemaining);
     const session = state.currentSession;
     const color = this.getSessionColor(session);
+    const config = this.pomodoro.getConfig();
 
     // Update timer
     this.timerBox.setContent(this.getLargeTime(time));
@@ -216,7 +323,7 @@ class PomodoroTUI {
     this.sessionBox.style.fg = color;
 
     // Update progress bar
-    const sessionDuration = this.getSessionDuration(session);
+    const sessionDuration = this.getSessionDuration(session, config);
     const progress = (state.timeRemaining / (sessionDuration * 60)) * 100;
     this.progressBar.setProgress(progress);
     (this.progressBar.style.bar as any).bg = color;
@@ -234,22 +341,19 @@ class PomodoroTUI {
     this.screen.render();
   }
 
-  private getSessionDuration(session: SessionType): number {
+  private getSessionDuration(session: SessionType, config: PomodoroConfig): number {
     switch (session) {
       case 'work':
-        return 25;
+        return config.workDuration;
       case 'shortBreak':
-        return 5;
+        return config.shortBreakDuration;
       case 'longBreak':
-        return 15;
+        return config.longBreakDuration;
     }
   }
 
-  private onSessionComplete(session: SessionType): void {
+  private onSessionComplete(_session: SessionType): void {
     this.notifyUser();
-    // Update total seconds for next session
-    const state = this.pomodoro.getState();
-    this.totalSeconds = state.timeRemaining;
   }
 
   private notifyUser(): void {
@@ -277,5 +381,9 @@ class PomodoroTUI {
   }
 }
 
-const app = new PomodoroTUI();
-app.run();
+// Main
+const config = parseConfig();
+if (config) {
+  const app = new PomodoroTUI(config);
+  app.run();
+}

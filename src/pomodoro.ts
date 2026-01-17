@@ -29,6 +29,10 @@ export class Pomodoro {
     return { ...this.state };
   }
 
+  getConfig(): PomodoroConfig {
+    return { ...this.config };
+  }
+
   start(): void {
     if (this.state.isRunning) return;
 
