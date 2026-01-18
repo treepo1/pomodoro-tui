@@ -91,7 +91,12 @@ export class Pomodoro {
   }
 
   skip(): void {
-    this.pause();
+    // Stop the timer first to prevent any race conditions
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    this.state.isRunning = false;
     this.completeSession();
   }
 
