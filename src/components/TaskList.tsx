@@ -1,9 +1,9 @@
 import React from "react";
 import { Box, Text } from "ink";
-import type { Task } from "../tasks";
+import type { Project, ProjectTask, ProjectColor } from "../projects";
 
 interface TaskItemProps {
-  task: Task;
+  task: ProjectTask;
   selected: boolean;
 }
 
@@ -13,34 +13,101 @@ function TaskItem({ task, selected }: TaskItemProps) {
   const textColor = task.completed ? "gray" : "white";
 
   return (
-    <Text color={selected ? "cyan" : textColor}>
+    <Text color={selected ? "cyan" : textColor} dimColor={task.completed && !selected}>
       {prefix}{checkbox} {task.text}
     </Text>
   );
 }
 
+function renderProgressBar(percentage: number, width: number, color: ProjectColor): React.ReactNode {
+  const filledLength = Math.round((width * percentage) / 100);
+  const emptyLength = width - filledLength;
+  const filled = "\u2588".repeat(filledLength);
+  const empty = "\u2591".repeat(emptyLength);
+  
+  return (
+    <Text>
+      <Text color={color}>{filled}</Text>
+      <Text color="gray">{empty}</Text>
+    </Text>
+  );
+}
+
 interface TaskListProps {
-  tasks: Task[];
+  project: Project | null;
+  tasks: ProjectTask[];
   selectedIndex: number;
   addMode: boolean;
   taskInput: string;
+  projectStats: { total: number; completed: number; percentage: number };
+  projectIndex: number;      // 0-based, -1 if no projects
+  totalProjects: number;
 }
 
-export function TaskList({ tasks, selectedIndex, addMode, taskInput }: TaskListProps) {
+export function TaskList({ 
+  project, 
+  tasks, 
+  selectedIndex, 
+  addMode, 
+  taskInput, 
+  projectStats,
+  projectIndex,
+  totalProjects,
+}: TaskListProps) {
+  // No projects exist
+  if (!project) {
+    return (
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor="gray"
+        paddingX={1}
+        paddingY={0}
+        width={30}
+      >
+        <Box marginBottom={1}>
+          <Text bold color="gray">NO PROJECT</Text>
+        </Box>
+        <Box flexDirection="column" paddingY={1}>
+          <Text dimColor>  No projects yet.</Text>
+          <Text dimColor>  Press 'a' to create</Text>
+          <Text dimColor>  one and add your</Text>
+          <Text dimColor>  first task.</Text>
+        </Box>
+      </Box>
+    );
+  }
+
   const pending = tasks.filter(t => !t.completed);
   const completed = tasks.filter(t => t.completed);
+  const projectNumber = `${projectIndex + 1}/${totalProjects}`;
 
   return (
     <Box
       flexDirection="column"
       borderStyle="single"
-      borderColor="gray"
+      borderColor={project.color}
       paddingX={1}
       paddingY={0}
       width={30}
     >
-      <Box marginBottom={1}>
-        <Text bold color="cyan">TO DO</Text>
+      {/* Project Header */}
+      <Box justifyContent="space-between">
+        <Text bold color={project.color}>
+          {project.name.length > 18 ? project.name.substring(0, 18) + "..." : project.name}
+        </Text>
+        <Text color="gray">{projectNumber}</Text>
+      </Box>
+      
+      {/* Progress Bar */}
+      <Box>
+        {renderProgressBar(projectStats.percentage, 20, project.color)}
+        <Text color="white"> {projectStats.percentage}%</Text>
+      </Box>
+
+      {/* TO DO Section */}
+      <Box marginTop={1} marginBottom={0}>
+        <Text bold color="white">TO DO</Text>
       </Box>
 
       {pending.length === 0 && !addMode && (
@@ -57,7 +124,8 @@ export function TaskList({ tasks, selectedIndex, addMode, taskInput }: TaskListP
         </Box>
       )}
 
-      <Box marginTop={1} marginBottom={1}>
+      {/* DONE Section */}
+      <Box marginTop={1} marginBottom={0}>
         <Text bold color="gray">DONE</Text>
       </Box>
 
@@ -73,8 +141,10 @@ export function TaskList({ tasks, selectedIndex, addMode, taskInput }: TaskListP
         />
       ))}
 
-      <Box marginTop={1}>
-        <Text dimColor>[a]dd [d]el [↑↓] [Space]</Text>
+      {/* Controls */}
+      <Box marginTop={1} flexDirection="column">
+        <Text dimColor>[[/]] switch [a]dd [d]el</Text>
+        <Text dimColor>[↑↓] nav [Space] toggle</Text>
       </Box>
     </Box>
   );

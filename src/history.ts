@@ -104,6 +104,111 @@ export class HistoryManager {
     };
   }
 
+  // Get stats for last N days
+  private getStatsForDateRange(startDate: Date, endDate: Date): { pomodoros: number; totalMinutes: number } {
+    const start = this.getDateString(startDate);
+    const end = this.getDateString(endDate);
+    const entries = this.history.entries.filter(
+      (e) => e.date >= start && e.date <= end && e.sessionType === 'work'
+    );
+    return {
+      pomodoros: entries.length,
+      totalMinutes: entries.reduce((sum, e) => sum + e.duration, 0),
+    };
+  }
+
+  // Get stats for this week (Monday to Sunday)
+  getWeekStats(): { pomodoros: number; totalMinutes: number } {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    return this.getStatsForDateRange(monday, now);
+  }
+
+  // Get stats for this month
+  getMonthStats(): { pomodoros: number; totalMinutes: number } {
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return this.getStatsForDateRange(firstOfMonth, now);
+  }
+
+  // Get all-time stats
+  getAllTimeStats(): { pomodoros: number; totalMinutes: number; totalDays: number } {
+    const workEntries = this.history.entries.filter((e) => e.sessionType === 'work');
+    const uniqueDays = new Set(workEntries.map((e) => e.date));
+    return {
+      pomodoros: this.history.totalPomodoros,
+      totalMinutes: workEntries.reduce((sum, e) => sum + e.duration, 0),
+      totalDays: uniqueDays.size,
+    };
+  }
+
+  // Get daily pomodoro counts for last N days (for chart)
+  getDailyStats(days: number): Array<{ date: string; dayLabel: string; pomodoros: number; minutes: number }> {
+    const result: Array<{ date: string; dayLabel: string; pomodoros: number; minutes: number }> = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = this.getDateString(date);
+      const dayLabel = dayNames[date.getDay()];
+      
+      const dayEntries = this.history.entries.filter(
+        (e) => e.date === dateStr && e.sessionType === 'work'
+      );
+      
+      result.push({
+        date: dateStr,
+        dayLabel,
+        pomodoros: dayEntries.length,
+        minutes: dayEntries.reduce((sum, e) => sum + e.duration, 0),
+      });
+    }
+    
+    return result;
+  }
+
+  // Get average pomodoros per day
+  getAveragePomodoros(): number {
+    const allTime = this.getAllTimeStats();
+    if (allTime.totalDays === 0) return 0;
+    return Math.round((allTime.pomodoros / allTime.totalDays) * 10) / 10;
+  }
+
+  // Get streak (consecutive days with at least 1 pomodoro)
+  getCurrentStreak(): number {
+    const workEntries = this.history.entries.filter((e) => e.sessionType === 'work');
+    if (workEntries.length === 0) return 0;
+
+    const uniqueDays = [...new Set(workEntries.map((e) => e.date))].sort().reverse();
+    const today = this.getDateString(new Date());
+    const yesterday = this.getDateString(new Date(Date.now() - 86400000));
+
+    // Check if streak is active (today or yesterday has entries)
+    if (uniqueDays[0] !== today && uniqueDays[0] !== yesterday) {
+      return 0;
+    }
+
+    let streak = 1;
+    for (let i = 1; i < uniqueDays.length; i++) {
+      const prevDate = new Date(uniqueDays[i - 1]);
+      const currDate = new Date(uniqueDays[i]);
+      const diffDays = Math.round((prevDate.getTime() - currDate.getTime()) / 86400000);
+      
+      if (diffDays === 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
   getFilePath(): string {
     return this.filePath;
   }

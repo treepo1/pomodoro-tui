@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Text } from "ink";
 
-export type ActiveTab = "timer" | "stats" | "group";
-export const TABS: ActiveTab[] = ["timer", "stats", "group"];
+export type ActiveTab = "timer" | "projects" | "stats" | "group";
+export const TABS: ActiveTab[] = ["timer", "projects", "stats", "group"];
 
 interface TabsProps {
   activeTab: ActiveTab;
@@ -16,6 +16,13 @@ export function Tabs({ activeTab }: TabsProps) {
         color={activeTab === "timer" ? "yellow" : "gray"}
       >
         [ Timer ]
+      </Text>
+      <Text> </Text>
+      <Text
+        bold={activeTab === "projects"}
+        color={activeTab === "projects" ? "yellow" : "gray"}
+      >
+        [ Projects ]
       </Text>
       <Text> </Text>
       <Text

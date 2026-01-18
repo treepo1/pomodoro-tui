@@ -5,7 +5,7 @@ import { renderBigText } from "../ui";
 import { getSessionColor, getSessionLabel, getSessionDuration, getConnectionDisplay } from "../utils";
 import type { JamConnectionState } from "../types";
 import { TaskList } from "./TaskList";
-import type { Task } from "../tasks";
+import type { Project, ProjectTask } from "../projects";
 
 interface TimerTabProps {
   state: PomodoroState;
@@ -20,10 +20,15 @@ interface TimerTabProps {
   todayStats: { pomodoros: number; totalMinutes: number };
   musicStatus: string;
   formatTime: (seconds: number) => string;
-  tasks: Task[];
+  // Project-based task props
+  currentProject: Project | null;
+  projectTasks: ProjectTask[];
   selectedTaskIndex: number;
   addTaskMode: boolean;
   taskInput: string;
+  projectStats: { total: number; completed: number; percentage: number };
+  projectIndex: number;
+  totalProjects: number;
 }
 
 export function TimerTab({
@@ -39,10 +44,14 @@ export function TimerTab({
   todayStats,
   musicStatus,
   formatTime,
-  tasks,
+  currentProject,
+  projectTasks,
   selectedTaskIndex,
   addTaskMode,
   taskInput,
+  projectStats,
+  projectIndex,
+  totalProjects,
 }: TimerTabProps) {
   const time = formatTime(state.timeRemaining);
   const session = state.currentSession;
@@ -80,11 +89,11 @@ export function TimerTab({
         <Box marginY={1}>
           <Text color={color}>{progressBar}</Text>
         </Box>
-        <Box marginY={1}>
-          <Text color={state.isRunning ? "green" : "yellow"}>
-            {state.isRunning ? "[ RUNNING ]" : "[ PAUSED ]"}
-          </Text>
-        </Box>
+        {!state.isRunning && (
+          <Box marginY={1}>
+            <Text color="yellow">[ PAUSED ]</Text>
+          </Box>
+        )}
 
         {isJamMode && (
           <>
@@ -158,12 +167,16 @@ export function TimerTab({
         </Box>
       </Box>
 
-      {/* Right column - Task List */}
+      {/* Right column - Project Task List */}
       <TaskList
-        tasks={tasks}
+        project={currentProject}
+        tasks={projectTasks}
         selectedIndex={selectedTaskIndex}
         addMode={addTaskMode}
         taskInput={taskInput}
+        projectStats={projectStats}
+        projectIndex={projectIndex}
+        totalProjects={totalProjects}
       />
     </Box>
   );
