@@ -148,9 +148,8 @@ The app includes 8 curated radio stations:
 - FM Sergipe
 - Smooth Jazz
 
-Music automatically plays during work sessions and pauses during breaks.
 
-## Jam Sessions
+## Group Sessions
 
 Work together with friends in real-time collaborative pomodoro sessions:
 
