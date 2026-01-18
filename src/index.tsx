@@ -136,12 +136,6 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
       await history.addEntry(session, sessionDuration);
       setTodayStats(history.getTodayStats());
       const nextState = pomodoro.getState();
-      if (nextState.currentSession === "work") {
-        await music.play();
-      } else {
-        music.pause();
-      }
-      setMusicStatus(music.getStatusText());
       notifyUser();
     });
 
@@ -286,7 +280,6 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
     } else if (input === "s" && canControl) {
       pomodoro.start();
       jamManager?.sendControl("start");
-      if (state.currentSession === "work") { music.play(); setMusicStatus(music.getStatusText()); }
     } else if (input === "p" && canControl) {
       pomodoro.pause();
       jamManager?.sendControl("pause");

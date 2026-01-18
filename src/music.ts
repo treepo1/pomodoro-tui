@@ -95,6 +95,7 @@ export class RadioPlayer {
     try {
       const args = this.getPlayerArgs(station.url);
       this.process = Bun.spawn([this.playerCommand, ...args], {
+        stdin: 'ignore',
         stdout: 'ignore',
         stderr: 'ignore',
       });

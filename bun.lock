@@ -1,11 +1,11 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "pomodoro-app",
       "dependencies": {
         "ink": "^6.6.0",
-        "partysocket": "^1.0.2",
         "react": "^19.2.3",
         "react-devtools-core": "^7.0.1",
       },
@@ -146,8 +146,6 @@
 
     "escape-string-regexp": ["escape-string-regexp@2.0.0", "", {}, "sha512-UpzcLCXolUWcNu5HtVMHYdXJjArjsF9C0aNnquZYY4uW/Vu0miy5YoWvbV345HauVvcAUnpRuhMMcqTcGOY2+w=="],
 
-    "event-target-polyfill": ["event-target-polyfill@0.0.4", "", {}, "sha512-Gs6RLjzlLRdT8X9ZipJdIZI/Y6/HhRLyq9RdDlCsnpxr/+Nn6bU2EFGuC94GjxqhM+Nmij2Vcq98yoHrU8uNFQ=="],
-
     "execa": ["execa@8.0.1", "", { "dependencies": { "cross-spawn": "^7.0.3", "get-stream": "^8.0.1", "human-signals": "^5.0.0", "is-stream": "^3.0.0", "merge-stream": "^2.0.0", "npm-run-path": "^5.1.0", "onetime": "^6.0.0", "signal-exit": "^4.1.0", "strip-final-newline": "^3.0.0" } }, "sha512-VyhnebXciFV2DESc+p6B+y0LjSm0krU4OgJN44qFAhBY0TJ+1V61tYD2+wHusZ6F9n5K+vl8k0sTy7PEfV4qpg=="],
 
     "exit-hook": ["exit-hook@2.2.1", "", {}, "sha512-eNTPlAD67BmP31LDINZ3U7HSF8l57TxOY2PmBJ1shpCvpnxBF93mWCE8YHBnXs8qiUZJc9WDcWIeC3a2HIAMfw=="],
@@ -199,8 +197,6 @@
     "onetime": ["onetime@6.0.0", "", { "dependencies": { "mimic-fn": "^4.0.0" } }, "sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ=="],
 
     "partykit": ["partykit@0.0.111", "", { "dependencies": { "@cloudflare/workers-types": "4.20240718.0", "clipboardy": "4.0.0", "esbuild": "0.21.5", "miniflare": "3.20240718.0", "yoga-wasm-web": "0.3.3" }, "optionalDependencies": { "fsevents": "2.3.3" }, "bin": { "partykit": "dist/bin.mjs" } }, "sha512-pbUzJmulPTqZWgtH++eClnLlddTWS0RPKOAQyexYiSqGEg2/Ff84Ep0qWFqy+53wiz098DPFekRI375Qy2GsZw=="],
-
-    "partysocket": ["partysocket@1.1.10", "", { "dependencies": { "event-target-polyfill": "^0.0.4" } }, "sha512-ACfn0P6lQuj8/AqB4L5ZDFcIEbpnIteNNObrlxqV1Ge80GTGhjuJ2sNKwNQlFzhGi4kI7fP/C1Eqh8TR78HjDQ=="],
 
     "patch-console": ["patch-console@2.0.0", "", {}, "sha512-0YNdUceMdaQwoKce1gatDScmMo5pu/tfABfnzEqeG0gtTmd7mh/WcwgUjtAeOU7N8nFFlbQBnFK2gXW5fGvmMA=="],
 

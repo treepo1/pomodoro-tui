@@ -125,7 +125,6 @@ export function parseConfig(): AppConfig | null {
       }
       pomodoro.workDuration = work;
     }
-
     if (values.short) {
       const short = parseInt(values.short, 10);
       if (isNaN(short) || short < 1) {
