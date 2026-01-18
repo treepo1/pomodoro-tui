@@ -57,4 +57,59 @@ if ($UserPath -notlike "*$InstallDir*") {
 
 Write-Host ""
 Write-Host "Successfully installed pomotui $Version!" -ForegroundColor Green
+Write-Host ""
+
+# Install mpv for music/radio feature
+Write-Host "Checking for mpv (required for music feature)..."
+$mpvPath = Get-Command mpv -ErrorAction SilentlyContinue
+
+if ($mpvPath) {
+    Write-Host "mpv is already installed." -ForegroundColor Green
+} else {
+    Write-Host "mpv not found. Attempting to install..."
+    
+    # Try winget first (Windows 10 1709+ and Windows 11)
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Host "Installing mpv via winget..."
+        winget install --id=mpv.net -e --accept-source-agreements --accept-package-agreements
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "mpv installed successfully." -ForegroundColor Green
+        } else {
+            Write-Host "Warning: winget installation failed. Please install mpv manually:" -ForegroundColor Yellow
+            Write-Host "  winget install mpv.net"
+            Write-Host "  or download from: https://mpv.io/installation/"
+        }
+    }
+    # Try chocolatey
+    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Host "Installing mpv via Chocolatey..."
+        choco install mpv -y
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "mpv installed successfully." -ForegroundColor Green
+        } else {
+            Write-Host "Warning: Chocolatey installation failed. Please install mpv manually:" -ForegroundColor Yellow
+            Write-Host "  choco install mpv"
+            Write-Host "  or download from: https://mpv.io/installation/"
+        }
+    }
+    # Try scoop
+    elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        Write-Host "Installing mpv via Scoop..."
+        scoop install mpv
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "mpv installed successfully." -ForegroundColor Green
+        } else {
+            Write-Host "Warning: Scoop installation failed. Please install mpv manually:" -ForegroundColor Yellow
+            Write-Host "  scoop install mpv"
+            Write-Host "  or download from: https://mpv.io/installation/"
+        }
+    }
+    else {
+        Write-Host "Warning: No package manager found (winget, chocolatey, or scoop)." -ForegroundColor Yellow
+        Write-Host "Please install mpv manually from: https://mpv.io/installation/"
+    }
+}
+
+Write-Host ""
 Write-Host "Run 'pomotui --help' to get started."

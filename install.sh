@@ -92,4 +92,45 @@ fi
 
 echo ""
 echo "Successfully installed pomotui $VERSION!"
+echo ""
+
+# Install mpv for music/radio feature
+echo "Checking for mpv (required for music feature)..."
+if command -v mpv &> /dev/null; then
+    echo "mpv is already installed."
+else
+    echo "mpv not found. Attempting to install..."
+    case "$PLATFORM" in
+        darwin)
+            if command -v brew &> /dev/null; then
+                echo "Installing mpv via Homebrew..."
+                brew install mpv
+            else
+                echo "Warning: Homebrew not found. Please install mpv manually:"
+                echo "  brew install mpv"
+                echo "  or download from: https://mpv.io/installation/"
+            fi
+            ;;
+        linux)
+            if command -v apt-get &> /dev/null; then
+                echo "Installing mpv via apt..."
+                sudo apt-get update && sudo apt-get install -y mpv
+            elif command -v dnf &> /dev/null; then
+                echo "Installing mpv via dnf..."
+                sudo dnf install -y mpv
+            elif command -v pacman &> /dev/null; then
+                echo "Installing mpv via pacman..."
+                sudo pacman -S --noconfirm mpv
+            elif command -v zypper &> /dev/null; then
+                echo "Installing mpv via zypper..."
+                sudo zypper install -y mpv
+            else
+                echo "Warning: Could not detect package manager. Please install mpv manually:"
+                echo "  https://mpv.io/installation/"
+            fi
+            ;;
+    esac
+fi
+
+echo ""
 echo "Run 'pomotui --help' to get started."
