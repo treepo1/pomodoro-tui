@@ -5,16 +5,25 @@ interface ControlsProps {
   canControl: boolean;
   isCurrentHost: boolean;
   showTransferHint: boolean;
+  petId: string;
 }
 
-export function Controls({ canControl, isCurrentHost, showTransferHint }: ControlsProps) {
+export function Controls({
+  canControl,
+  isCurrentHost,
+  showTransferHint,
+  petId,
+}: ControlsProps) {
   return (
     <>
       <Box marginTop={1}>
         <Text color="yellow">
-          {canControl
-            ? `[S]tart [P]ause [R]eset [N]ext [Q]uit [M]usic [>]station`
-            : `[Q]uit [M]usic [>]station`}
+          {canControl ? `[S]tart [P]ause [R]eset [N]ext [Q]uit ` : `[Q]uit`}
+        </Text>
+      </Box>
+      <Box>
+        <Text color="magenta">
+          {`[M]usic [>]station [+/-] Volume [Shift+P] Pet [${petId}]`}
         </Text>
       </Box>
       {isCurrentHost && showTransferHint && (

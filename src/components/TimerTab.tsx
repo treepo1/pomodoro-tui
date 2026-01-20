@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
 import type { PomodoroState, PomodoroConfig, JamParticipant } from "../types";
 import { renderBigText } from "../ui";
@@ -6,6 +6,7 @@ import { getSessionColor, getSessionLabel, getSessionDuration, getConnectionDisp
 import type { JamConnectionState } from "../types";
 import { TaskList } from "./TaskList";
 import type { Project, ProjectTask } from "../projects";
+import { getPetById, getPetFrame, type Pet } from "../pets";
 
 interface TimerTabProps {
   state: PomodoroState;
@@ -19,6 +20,7 @@ interface TimerTabProps {
   jamManagerId?: string;
   todayStats: { pomodoros: number; totalMinutes: number };
   musicStatus: string;
+  petId: string;
   formatTime: (seconds: number) => string;
   // Project-based task props
   currentProject: Project | null;
@@ -43,6 +45,7 @@ export function TimerTab({
   jamManagerId,
   todayStats,
   musicStatus,
+  petId,
   formatTime,
   currentProject,
   projectTasks,
@@ -66,6 +69,23 @@ export function TimerTab({
 
   const bigTimeLines = renderBigText(time);
   const connDisplay = getConnectionDisplay(jamConnectionState);
+
+  // Pet animation
+  const [petFrame, setPetFrame] = useState(0);
+  const pet = getPetById(petId);
+  const isMusicPlaying = !musicStatus.includes("(paused)") && !musicStatus.includes("Off");
+
+  useEffect(() => {
+    if (!isMusicPlaying || !pet || pet.id === "none") return;
+
+    const interval = setInterval(() => {
+      setPetFrame((prev) => (prev + 1) % pet.frames.length);
+    }, 300);
+
+    return () => clearInterval(interval);
+  }, [isMusicPlaying, pet]);
+
+  const dancingPet = isMusicPlaying && pet ? getPetFrame(pet, petFrame) : "";
 
   return (
     <Box flexDirection="row" justifyContent="space-between" width="100%">
@@ -163,7 +183,7 @@ export function TimerTab({
           </Text>
         </Box>
         <Box marginY={1}>
-          <Text color="magenta">{musicStatus}</Text>
+          <Text color="magenta">{musicStatus} {dancingPet}</Text>
         </Box>
       </Box>
 
