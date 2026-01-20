@@ -72,7 +72,7 @@ echo "Downloading from: $DOWNLOAD_URL"
 echo ""
 
 # Create temp directory
-TMP_DIR=$(mktemp -d)
+TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'pomotui-install')
 trap "rm -rf $TMP_DIR" EXIT
 
 # Download binary
