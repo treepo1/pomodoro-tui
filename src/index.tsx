@@ -67,6 +67,7 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
   const [projectInput, setProjectInput] = useState("");
   const [addProjectTaskMode, setAddProjectTaskMode] = useState(false);
   const [projectTaskInput, setProjectTaskInput] = useState("");
+  const [taskListCollapsed, setTaskListCollapsed] = useState(false);
 
   // Jam session state
   const [jamManager, setJamManager] = useState<JamManager | null>(null);
@@ -281,72 +282,104 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
 
     // Timer tab controls
     if (activeTab === "timer") {
-      const sortedTasks = getSortedTasks(currentProject);
+      // Toggle task list collapse with 't' - always available
+      if (input === "t") {
+        setTaskListCollapsed((prev) => !prev);
+        return;
+      }
 
-      // Switch to previous project with [
-      if (input === "[") {
-        if (projects.length > 0) {
-          const currentIdx = projects.findIndex(p => p.id === currentProjectId);
-          const newIdx = currentIdx <= 0 ? projects.length - 1 : currentIdx - 1;
-          projectManager.setCurrentProject(projects[newIdx].id);
-          setCurrentProjectId(projects[newIdx].id);
-          setTimerSelectedTaskIndex(0);
+      // Task-related controls only available when task list is expanded
+      if (!taskListCollapsed) {
+        const sortedTasks = getSortedTasks(currentProject);
+
+        // Switch to previous project with [
+        if (input === "[") {
+          if (projects.length > 0) {
+            const currentIdx = projects.findIndex(
+              (p) => p.id === currentProjectId,
+            );
+            const newIdx =
+              currentIdx <= 0 ? projects.length - 1 : currentIdx - 1;
+            projectManager.setCurrentProject(projects[newIdx].id);
+            setCurrentProjectId(projects[newIdx].id);
+            setTimerSelectedTaskIndex(0);
+            setProjects(projectManager.getProjects());
+          }
+          return;
+        }
+
+        // Switch to next project with ]
+        if (input === "]") {
+          if (projects.length > 0) {
+            const currentIdx = projects.findIndex(
+              (p) => p.id === currentProjectId,
+            );
+            const newIdx = (currentIdx + 1) % projects.length;
+            projectManager.setCurrentProject(projects[newIdx].id);
+            setCurrentProjectId(projects[newIdx].id);
+            setTimerSelectedTaskIndex(0);
+            setProjects(projectManager.getProjects());
+          }
+          return;
+        }
+
+        // Task navigation with Up/Down arrows
+        if (key.upArrow) {
+          if (sortedTasks.length > 0) {
+            setTimerSelectedTaskIndex(
+              (p) => (p - 1 + sortedTasks.length) % sortedTasks.length,
+            );
+          }
+          return;
+        }
+        if (key.downArrow) {
+          if (sortedTasks.length > 0) {
+            setTimerSelectedTaskIndex((p) => (p + 1) % sortedTasks.length);
+          }
+          return;
+        }
+
+        // Toggle task with Space
+        if (
+          input === " " &&
+          currentProject &&
+          sortedTasks[timerSelectedTaskIndex]
+        ) {
+          projectManager.toggleTask(
+            currentProject.id,
+            sortedTasks[timerSelectedTaskIndex].id,
+          );
           setProjects(projectManager.getProjects());
+          return;
         }
-        return;
-      }
 
-      // Switch to next project with ]
-      if (input === "]") {
-        if (projects.length > 0) {
-          const currentIdx = projects.findIndex(p => p.id === currentProjectId);
-          const newIdx = (currentIdx + 1) % projects.length;
-          projectManager.setCurrentProject(projects[newIdx].id);
-          setCurrentProjectId(projects[newIdx].id);
-          setTimerSelectedTaskIndex(0);
+        // Add task mode with 'a'
+        if (input === "a") {
+          setTimerAddTaskMode(true);
+          setTimerTaskInput("");
+          return;
+        }
+
+        // Delete task with 'd'
+        if (
+          input === "d" &&
+          currentProject &&
+          sortedTasks[timerSelectedTaskIndex]
+        ) {
+          projectManager.deleteTask(
+            currentProject.id,
+            sortedTasks[timerSelectedTaskIndex].id,
+          );
           setProjects(projectManager.getProjects());
+          // Adjust selection
+          const newSortedTasks = getSortedTasks(
+            projectManager.getProject(currentProject.id) || null,
+          );
+          if (timerSelectedTaskIndex >= newSortedTasks.length) {
+            setTimerSelectedTaskIndex(Math.max(0, newSortedTasks.length - 1));
+          }
+          return;
         }
-        return;
-      }
-
-      // Task navigation with Up/Down arrows
-      if (key.upArrow) {
-        if (sortedTasks.length > 0) {
-          setTimerSelectedTaskIndex((p) => (p - 1 + sortedTasks.length) % sortedTasks.length);
-        }
-        return;
-      }
-      if (key.downArrow) {
-        if (sortedTasks.length > 0) {
-          setTimerSelectedTaskIndex((p) => (p + 1) % sortedTasks.length);
-        }
-        return;
-      }
-
-      // Toggle task with Space
-      if (input === " " && currentProject && sortedTasks[timerSelectedTaskIndex]) {
-        projectManager.toggleTask(currentProject.id, sortedTasks[timerSelectedTaskIndex].id);
-        setProjects(projectManager.getProjects());
-        return;
-      }
-
-      // Add task mode with 'a'
-      if (input === "a") {
-        setTimerAddTaskMode(true);
-        setTimerTaskInput("");
-        return;
-      }
-
-      // Delete task with 'd'
-      if (input === "d" && currentProject && sortedTasks[timerSelectedTaskIndex]) {
-        projectManager.deleteTask(currentProject.id, sortedTasks[timerSelectedTaskIndex].id);
-        setProjects(projectManager.getProjects());
-        // Adjust selection
-        const newSortedTasks = getSortedTasks(projectManager.getProject(currentProject.id) || null);
-        if (timerSelectedTaskIndex >= newSortedTasks.length) {
-          setTimerSelectedTaskIndex(Math.max(0, newSortedTasks.length - 1));
-        }
-        return;
       }
     }
 
@@ -454,6 +487,7 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
       setActiveTab((p) => TABS[(TABS.indexOf(p) + 1) % TABS.length]);
       return;
     }
+    
     if (key.leftArrow) {
       setActiveTab((p) => TABS[(TABS.indexOf(p) - 1 + TABS.length) % TABS.length]);
       return;
@@ -541,6 +575,7 @@ function PomodoroTUI({ config }: PomodoroTUIProps) {
           projectStats={currentProjectStats}
           projectIndex={currentProjectIndex}
           totalProjects={projects.length}
+          taskListCollapsed={taskListCollapsed}
         />
       )}
 

@@ -13,18 +13,26 @@ function TaskItem({ task, selected }: TaskItemProps) {
   const textColor = task.completed ? "gray" : "white";
 
   return (
-    <Text color={selected ? "cyan" : textColor} dimColor={task.completed && !selected}>
-      {prefix}{checkbox} {task.text}
+    <Text
+      color={selected ? "cyan" : textColor}
+      dimColor={task.completed && !selected}
+    >
+      {prefix}
+      {checkbox} {task.text}
     </Text>
   );
 }
 
-function renderProgressBar(percentage: number, width: number, color: ProjectColor): React.ReactNode {
+function renderProgressBar(
+  percentage: number,
+  width: number,
+  color: ProjectColor,
+): React.ReactNode {
   const filledLength = Math.round((width * percentage) / 100);
   const emptyLength = width - filledLength;
   const filled = "\u2588".repeat(filledLength);
   const empty = "\u2591".repeat(emptyLength);
-  
+
   return (
     <Text>
       <Text color={color}>{filled}</Text>
@@ -40,21 +48,24 @@ interface TaskListProps {
   addMode: boolean;
   taskInput: string;
   projectStats: { total: number; completed: number; percentage: number };
-  projectIndex: number;      // 0-based, -1 if no projects
+  projectIndex: number; // 0-based, -1 if no projects
   totalProjects: number;
+  collapsed?: boolean;
 }
 
-export function TaskList({ 
-  project, 
-  tasks, 
-  selectedIndex, 
-  addMode, 
-  taskInput, 
+export function TaskList({
+  project,
+  tasks,
+  selectedIndex,
+  addMode,
+  taskInput,
   projectStats,
   projectIndex,
   totalProjects,
+  collapsed = false,
 }: TaskListProps) {
-  // No projects exist
+  const projectNumber = `${projectIndex + 1}/${totalProjects}`;
+
   if (!project) {
     return (
       <Box
@@ -64,23 +75,63 @@ export function TaskList({
         paddingX={1}
         paddingY={0}
         width={30}
+        alignSelf="flex-start"
       >
         <Box marginBottom={1}>
-          <Text bold color="gray">NO PROJECT</Text>
+          <Text bold color="gray">
+            NO PROJECT
+          </Text>
         </Box>
-        <Box flexDirection="column" paddingY={1}>
-          <Text dimColor>  No projects yet.</Text>
-          <Text dimColor>  Press 'a' to create</Text>
-          <Text dimColor>  one and add your</Text>
-          <Text dimColor>  first task.</Text>
-        </Box>
+        {addMode ? (
+          <Box flexDirection="column" paddingY={1}>
+            <Text color="yellow">&gt; New task: {taskInput}_</Text>
+            <Box marginTop={1}>
+              <Text dimColor>[Enter] create [Esc] cancel</Text>
+            </Box>
+          </Box>
+        ) : !collapsed ? (
+          <Box flexDirection="column" paddingY={1}>
+            <Text dimColor> No projects yet.</Text>
+            <Text dimColor> Press 'a' to create</Text>
+            <Text dimColor> one and add your</Text>
+            <Text dimColor> first task.</Text>
+          </Box>
+        ) : (
+          <Text dimColor>[t] open</Text>
+        )}
       </Box>
     );
   }
 
-  const pending = tasks.filter(t => !t.completed);
-  const completed = tasks.filter(t => t.completed);
-  const projectNumber = `${projectIndex + 1}/${totalProjects}`;
+  // Collapsed view - minimal compact panel
+  if (collapsed) {
+    // No projects exist
+    return (
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={project.color}
+        paddingX={1}
+        alignSelf="flex-start"
+      >
+        <Text bold color="gray">
+          TASKS
+        </Text>
+        <Text color={project.color}>
+          {project.name.length > 12
+            ? project.name.substring(0, 12) + ".."
+            : project.name}
+        </Text>
+        <Text dimColor>
+          {projectStats.completed}/{projectStats.total} done
+        </Text>
+        <Text dimColor>[t] open</Text>
+      </Box>
+    );
+  }
+
+  const pending = tasks.filter((t) => !t.completed);
+  const completed = tasks.filter((t) => t.completed);
 
   return (
     <Box
@@ -94,11 +145,13 @@ export function TaskList({
       {/* Project Header */}
       <Box justifyContent="space-between">
         <Text bold color={project.color}>
-          {project.name.length > 18 ? project.name.substring(0, 18) + "..." : project.name}
+          {project.name.length > 18
+            ? project.name.substring(0, 18) + "..."
+            : project.name}
         </Text>
         <Text color="gray">{projectNumber}</Text>
       </Box>
-      
+
       {/* Progress Bar */}
       <Box>
         {renderProgressBar(projectStats.percentage, 20, project.color)}
@@ -107,12 +160,12 @@ export function TaskList({
 
       {/* TO DO Section */}
       <Box marginTop={1} marginBottom={0}>
-        <Text bold color="white">TO DO</Text>
+        <Text bold color="white">
+          TO DO
+        </Text>
       </Box>
 
-      {pending.length === 0 && !addMode && (
-        <Text dimColor>  No tasks yet</Text>
-      )}
+      {pending.length === 0 && !addMode && <Text dimColor> No tasks yet</Text>}
 
       {pending.map((task, i) => (
         <TaskItem key={task.id} task={task} selected={i === selectedIndex} />
@@ -126,12 +179,12 @@ export function TaskList({
 
       {/* DONE Section */}
       <Box marginTop={1} marginBottom={0}>
-        <Text bold color="gray">DONE</Text>
+        <Text bold color="gray">
+          DONE
+        </Text>
       </Box>
 
-      {completed.length === 0 && (
-        <Text dimColor>  None completed</Text>
-      )}
+      {completed.length === 0 && <Text dimColor> None completed</Text>}
 
       {completed.map((task, i) => (
         <TaskItem
@@ -145,6 +198,7 @@ export function TaskList({
       <Box marginTop={1} flexDirection="column">
         <Text dimColor>[[/]] switch [a]dd [d]el</Text>
         <Text dimColor>[↑↓] nav [Space] toggle</Text>
+        <Text dimColor>[t] collapse</Text>
       </Box>
     </Box>
   );

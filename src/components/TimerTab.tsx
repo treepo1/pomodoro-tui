@@ -2,7 +2,12 @@ import React from "react";
 import { Box, Text } from "ink";
 import type { PomodoroState, PomodoroConfig, JamParticipant } from "../types";
 import { renderBigText } from "../ui";
-import { getSessionColor, getSessionLabel, getSessionDuration, getConnectionDisplay } from "../utils";
+import {
+  getSessionColor,
+  getSessionLabel,
+  getSessionDuration,
+  getConnectionDisplay,
+} from "../utils";
 import type { JamConnectionState } from "../types";
 import { TaskList } from "./TaskList";
 import type { Project, ProjectTask } from "../projects";
@@ -29,6 +34,7 @@ interface TimerTabProps {
   projectStats: { total: number; completed: number; percentage: number };
   projectIndex: number;
   totalProjects: number;
+  taskListCollapsed: boolean;
 }
 
 export function TimerTab({
@@ -52,6 +58,7 @@ export function TimerTab({
   projectStats,
   projectIndex,
   totalProjects,
+  taskListCollapsed,
 }: TimerTabProps) {
   const time = formatTime(state.timeRemaining);
   const session = state.currentSession;
@@ -60,7 +67,13 @@ export function TimerTab({
   const sessionDuration = getSessionDuration(session, config) || 1;
   const progress = (state.timeRemaining / (sessionDuration * 60)) * 100;
   const progressBarLength = 40;
-  const filledLength = Math.max(0, Math.min(progressBarLength, Math.round((progressBarLength * progress) / 100)));
+  const filledLength = Math.max(
+    0,
+    Math.min(
+      progressBarLength,
+      Math.round((progressBarLength * progress) / 100),
+    ),
+  );
   const progressBar =
     "█".repeat(filledLength) + "░".repeat(progressBarLength - filledLength);
 
@@ -86,18 +99,18 @@ export function TimerTab({
             </Text>
           ))}
         </Box>
-        <Box marginY={1}>
+        <Box marginY={0.4}>
           <Text color={color}>{progressBar}</Text>
         </Box>
         {!state.isRunning && (
-          <Box marginY={1}>
+          <Box marginY={0.4}>
             <Text color="yellow">[ PAUSED ]</Text>
           </Box>
         )}
 
         {isJamMode && (
           <>
-            <Box marginY={1} flexDirection="column" alignItems="center">
+            <Box marginY={0.4} flexDirection="column" alignItems="center">
               <Text color="yellow" bold>
                 JAM SESSION: {jamSessionCode}
               </Text>
@@ -109,8 +122,10 @@ export function TimerTab({
             </Box>
 
             {jamParticipants.length > 0 && (
-              <Box marginY={1} flexDirection="column" alignItems="center">
-                <Text color="gray">Participants ({jamParticipants.length}):</Text>
+              <Box marginY={0.4} flexDirection="column" alignItems="center">
+                <Text color="gray">
+                  Participants ({jamParticipants.length}):
+                </Text>
                 {(() => {
                   let transferIndex = 0;
                   return jamParticipants.map((p) => {
@@ -135,7 +150,7 @@ export function TimerTab({
             )}
 
             {!canControl && (
-              <Box marginY={1}>
+              <Box marginY={0.4}>
                 <Text color="gray" dimColor>
                   Only the host can control the timer
                 </Text>
@@ -143,7 +158,7 @@ export function TimerTab({
             )}
 
             {isCurrentHost && (
-              <Box marginY={1}>
+              <Box marginY={0.4}>
                 <Text color="gray">Share: pomotui --join {jamSessionCode}</Text>
               </Box>
             )}
@@ -151,18 +166,20 @@ export function TimerTab({
         )}
 
         {!isJamMode && (
-          <Box marginY={1}>
+          <Box marginY={0.4}>
             <Text color="gray">
-              Today: {todayStats.pomodoros} pomodoros ({todayStats.totalMinutes}m)
+              Today: {todayStats.pomodoros} pomodoros ({todayStats.totalMinutes}
+              m)
             </Text>
           </Box>
         )}
-        <Box marginY={1}>
+        <Box marginY={0.4}>
           <Text color="gray">
-            Work: {config.workDuration}m | Short: {config.shortBreakDuration}m | Long: {config.longBreakDuration}m
+            Work: {config.workDuration}m | Short: {config.shortBreakDuration}m |
+            Long: {config.longBreakDuration}m
           </Text>
         </Box>
-        <Box marginY={1}>
+        <Box marginY={0.4}>
           <Text color="magenta">{musicStatus}</Text>
         </Box>
       </Box>
@@ -177,6 +194,7 @@ export function TimerTab({
         projectStats={projectStats}
         projectIndex={projectIndex}
         totalProjects={totalProjects}
+        collapsed={taskListCollapsed}
       />
     </Box>
   );
