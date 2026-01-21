@@ -1,5 +1,5 @@
-import React from "react";
-import { Box, Text } from "ink";
+import { TextAttributes } from "@opentui/core";
+import { useTerminalDimensions } from "@opentui/react";
 
 interface ControlsProps {
   canControl: boolean;
@@ -14,24 +14,31 @@ export function Controls({
   showTransferHint,
   petId,
 }: ControlsProps) {
+  const { width } = useTerminalDimensions();
+
+  // Use shorter labels on narrow terminals
+  const isCompact = width < 70;
+
+  const fullControls = canControl
+    ? "[S]tart [P]ause [R]eset [N]ext [Q]uit"
+    : "[Q]uit";
+
+  const musicControls = `[M]usic [>]station [+/-] Volume [Shift+P] Pet [${petId}]`;
+
   return (
     <>
-      <Box marginTop={1}>
-        <Text color="yellow">
-          {canControl ? `[S]tart [P]ause [R]eset [N]ext [Q]uit ` : `[Q]uit`}
-        </Text>
-      </Box>
-      <Box>
-        <Text color="magenta">
-          {`[M]usic [>]station [+/-] Volume [Shift+P] Pet [${petId}]`}
-        </Text>
-      </Box>
-      {isCurrentHost && showTransferHint && (
-        <Box>
-          <Text color="yellow" dimColor>
+      <box marginTop={1}>
+        <text fg="yellow">{fullControls}</text>
+      </box>
+      <box marginTop={1}>
+        <text fg="magenta">{musicControls}</text>
+      </box>
+      {isCurrentHost && showTransferHint && !isCompact && (
+        <box>
+          <text fg="yellow" attributes={TextAttributes.DIM}>
             [1-9] transfer host
-          </Text>
-        </Box>
+          </text>
+        </box>
       )}
     </>
   );

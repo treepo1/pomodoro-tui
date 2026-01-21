@@ -84,6 +84,17 @@ export class Pomodoro {
     this.onTick?.(this.getState());
   }
 
+  // Clean shutdown - stops timer and clears all callbacks
+  stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    this.state.isRunning = false;
+    this.onTick = null;
+    this.onSessionComplete = null;
+  }
+
   reset(): void {
     this.pause();
     this.state.timeRemaining = this.getSessionDuration(this.state.currentSession) * 60;

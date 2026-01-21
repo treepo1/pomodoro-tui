@@ -1,35 +1,50 @@
-import React from "react";
-import { Box, Text } from "ink";
+import { TextAttributes, type MouseEvent } from "@opentui/core";
 import type { Project, ProjectTask, ProjectColor } from "../projects";
+import { useState, type ReactNode } from "react";
 
 interface TaskItemProps {
   task: ProjectTask;
   selected: boolean;
+  onClick?: () => void;
 }
 
-function TaskItem({ task, selected }: TaskItemProps) {
+function TaskItem({ task, selected, onClick }: TaskItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  
   const checkbox = task.completed ? "[x]" : "[ ]";
-  const prefix = selected ? "> " : "  ";
-  const textColor = task.completed ? "gray" : "white";
+  const prefix = selected ? "> " : isHovered ? "> " : "  ";
+  const textColor = selected ? "cyan" : isHovered ? "yellow" : task.completed ? "gray" : "white";
 
   return (
-    <Text color={selected ? "cyan" : textColor} dimColor={task.completed && !selected}>
-      {prefix}{checkbox} {task.text}
-    </Text>
+    <box
+      onMouseOver={() => setIsHovered(true)}
+      onMouseOut={() => setIsHovered(false)}
+      onMouseUp={onClick ? (e: MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+      } : undefined}
+    >
+      <text 
+        fg={textColor} 
+        attributes={task.completed && !selected && !isHovered ? TextAttributes.DIM : undefined}
+      >
+        {prefix}{checkbox} {task.text}
+      </text>
+    </box>
   );
 }
 
-function renderProgressBar(percentage: number, width: number, color: ProjectColor): React.ReactNode {
+function renderProgressBar(percentage: number, width: number, color: ProjectColor): ReactNode {
   const filledLength = Math.round((width * percentage) / 100);
   const emptyLength = width - filledLength;
   const filled = "\u2588".repeat(filledLength);
   const empty = "\u2591".repeat(emptyLength);
   
   return (
-    <Text>
-      <Text color={color}>{filled}</Text>
-      <Text color="gray">{empty}</Text>
-    </Text>
+    <box flexDirection="row">
+      <text fg={color}>{filled}</text>
+      <text fg="gray">{empty}</text>
+    </box>
   );
 }
 
@@ -42,6 +57,7 @@ interface TaskListProps {
   projectStats: { total: number; completed: number; percentage: number };
   projectIndex: number;      // 0-based, -1 if no projects
   totalProjects: number;
+  onTaskClick?: (index: number) => void;
 }
 
 export function TaskList({ 
@@ -53,28 +69,32 @@ export function TaskList({
   projectStats,
   projectIndex,
   totalProjects,
+  onTaskClick,
 }: TaskListProps) {
   // No projects exist
   if (!project) {
     return (
-      <Box
+      <box
         flexDirection="column"
+        border
         borderStyle="single"
         borderColor="gray"
-        paddingX={1}
-        paddingY={0}
+        paddingLeft={1}
+        paddingRight={1}
+        paddingTop={0}
+        paddingBottom={0}
         width={30}
       >
-        <Box marginBottom={1}>
-          <Text bold color="gray">NO PROJECT</Text>
-        </Box>
-        <Box flexDirection="column" paddingY={1}>
-          <Text dimColor>  No projects yet.</Text>
-          <Text dimColor>  Press 'a' to create</Text>
-          <Text dimColor>  one and add your</Text>
-          <Text dimColor>  first task.</Text>
-        </Box>
-      </Box>
+        <box marginBottom={1}>
+          <text attributes={TextAttributes.BOLD} fg="gray">NO PROJECT</text>
+        </box>
+        <box flexDirection="column" paddingTop={1} paddingBottom={1}>
+          <text attributes={TextAttributes.DIM}>  No projects yet.</text>
+          <text attributes={TextAttributes.DIM}>  Press 'a' to create</text>
+          <text attributes={TextAttributes.DIM}>  one and add your</text>
+          <text attributes={TextAttributes.DIM}>  first task.</text>
+        </box>
+      </box>
     );
   }
 
@@ -83,54 +103,62 @@ export function TaskList({
   const projectNumber = `${projectIndex + 1}/${totalProjects}`;
 
   return (
-    <Box
+    <box
       flexDirection="column"
+      border
       borderStyle="single"
       borderColor={project.color}
-      paddingX={1}
-      paddingY={0}
+      paddingLeft={1}
+      paddingRight={1}
+      paddingTop={0}
+      paddingBottom={0}
       width={30}
     >
       {/* Project Header */}
-      <Box justifyContent="space-between">
-        <Text bold color={project.color}>
+      <box justifyContent="space-between" flexDirection="row">
+        <text attributes={TextAttributes.BOLD} fg={project.color}>
           {project.name.length > 18 ? project.name.substring(0, 18) + "..." : project.name}
-        </Text>
-        <Text color="gray">{projectNumber}</Text>
-      </Box>
+        </text>
+        <text fg="gray">{projectNumber}</text>
+      </box>
       
       {/* Progress Bar */}
-      <Box>
+      <box flexDirection="row">
         {renderProgressBar(projectStats.percentage, 20, project.color)}
-        <Text color="white"> {projectStats.percentage}%</Text>
-      </Box>
+        <text fg="white"> {projectStats.percentage}%</text>
+      </box>
 
       {/* TO DO Section */}
-      <Box marginTop={1} marginBottom={0}>
-        <Text bold color="white">TO DO</Text>
-      </Box>
+      <box marginTop={1} marginBottom={0}>
+        <text attributes={TextAttributes.BOLD} fg="white">TO DO</text>
+      </box>
 
       {pending.length === 0 && !addMode && (
-        <Text dimColor>  No tasks yet</Text>
+        <text attributes={TextAttributes.DIM}>  No tasks yet</text>
       )}
 
       {pending.map((task, i) => (
-        <TaskItem key={task.id} task={task} selected={i === selectedIndex} />
+        <TaskItem 
+          key={task.id} 
+          task={task} 
+          selected={i === selectedIndex} 
+          onClick={() => onTaskClick?.(i)}
+        />
       ))}
 
       {addMode && (
-        <Box>
-          <Text color="yellow">&gt; [ ] {taskInput}_</Text>
-        </Box>
+        <box>
+          <text fg="yellow">&gt; [ ] {taskInput}_</text>
+        </box>
       )}
 
       {/* DONE Section */}
-      <Box marginTop={1} marginBottom={0}>
-        <Text bold color="gray">DONE</Text>
-      </Box>
+      <box marginTop={1} marginBottom={0}>
+        <text attributes={TextAttributes.BOLD} fg="gray">DONE</text>
+      </box>
 
       {completed.length === 0 && (
-        <Text dimColor>  None completed</Text>
+        <text attributes={TextAttributes.DIM}>  None completed</text>
       )}
 
       {completed.map((task, i) => (
@@ -138,14 +166,15 @@ export function TaskList({
           key={task.id}
           task={task}
           selected={pending.length + i === selectedIndex}
+          onClick={() => onTaskClick?.(pending.length + i)}
         />
       ))}
 
       {/* Controls */}
-      <Box marginTop={1} flexDirection="column">
-        <Text dimColor>[[/]] switch [a]dd [d]el</Text>
-        <Text dimColor>[↑↓] nav [Space] toggle</Text>
-      </Box>
-    </Box>
+      <box marginTop={1} flexDirection="column">
+        <text attributes={TextAttributes.DIM}>[[/]] switch [a]dd [d]el</text>
+        <text attributes={TextAttributes.DIM}>[up/down] nav [Space] toggle</text>
+      </box>
+    </box>
   );
 }

@@ -1,1 +1,6 @@
-export { renderBigText, getBigTextWidth } from "./bigText";
+export { 
+  renderBigText, 
+  getBigTextWidth, 
+  getOptimalTimerMode, 
+  type TimerDisplayMode 
+} from "./bigText";

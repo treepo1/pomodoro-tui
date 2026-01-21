@@ -1,5 +1,4 @@
-import React from "react";
-import { Box, Text } from "ink";
+import { TextAttributes } from "@opentui/core";
 import type { JamParticipant, JamConnectionState } from "../types";
 import { getConnectionDisplay } from "../utils";
 
@@ -33,81 +32,85 @@ export function GroupTab({
   const connDisplay = getConnectionDisplay(jamConnectionState);
 
   return (
-    <Box flexDirection="column" alignItems="center" paddingY={1}>
-      <Text bold color="cyan">GROUP SESSION</Text>
+    <box flexDirection="column" alignItems="center" paddingTop={1} paddingBottom={1}>
+      <text attributes={TextAttributes.BOLD} fg="cyan">GROUP SESSION</text>
 
       {isJamMode ? (
-        <Box marginY={2} flexDirection="column" alignItems="center">
-          <Text color="white">Session Code:</Text>
-          <Box marginY={1}>
-            <Text bold color="yellow" backgroundColor="gray">
+        <box marginTop={2} marginBottom={2} flexDirection="column" alignItems="center">
+          <text fg="white">Session Code:</text>
+          <box marginTop={1} marginBottom={1}>
+            <text attributes={TextAttributes.BOLD} fg="yellow" bg="gray">
               {"  "}{jamSessionCode}{"  "}
-            </Text>
-          </Box>
-          <Text color="gray" dimColor>Share this code with friends</Text>
+            </text>
+          </box>
+          <text fg="gray" attributes={TextAttributes.DIM}>Share this code with friends</text>
 
-          <Box marginY={1} flexDirection="column" alignItems="center">
-            <Text color={connDisplay.color as any}>
+          <box marginTop={1} marginBottom={1} flexDirection="column" alignItems="center">
+            <text fg={connDisplay.color}>
               {connDisplay.symbol} {connDisplay.text}
-            </Text>
-          </Box>
+            </text>
+          </box>
 
           {jamParticipants.length > 0 && (
-            <Box marginY={1} flexDirection="column" alignItems="center">
-              <Text color="white">Participants ({jamParticipants.length}):</Text>
+            <box marginTop={1} marginBottom={1} flexDirection="column" alignItems="center">
+              <text fg="white">Participants ({jamParticipants.length}):</text>
               {jamParticipants.map((p) => {
                 const isMe = p.id === jamManagerId;
                 return (
-                  <Text key={p.id} color={isMe ? "cyan" : "gray"}>
+                  <text key={p.id} fg={isMe ? "cyan" : "gray"}>
                     {p.isHost ? "* " : "- "}{p.name}
                     {p.isHost ? " (host)" : ""}
                     {isMe ? " (you)" : ""}
-                  </Text>
+                  </text>
                 );
               })}
-            </Box>
+            </box>
           )}
 
           {isCurrentHost && (
-            <Box marginY={1}>
-              <Text color="gray">Command: pomotui --join {jamSessionCode}</Text>
-            </Box>
+            <box marginTop={1} marginBottom={1}>
+              <text fg="gray">Command: pomotui --join {jamSessionCode}</text>
+            </box>
           )}
-        </Box>
+
+          <box marginTop={1} marginBottom={1}>
+            <text fg="white">[L] {isCurrentHost ? "Stop hosting" : "Leave session"}</text>
+          </box>
+        </box>
       ) : editNameMode ? (
-        <Box marginY={2} flexDirection="column" alignItems="center">
-          <Text color="white">Enter your name:</Text>
-          <Box marginY={1}>
-            <Text backgroundColor="gray" color="white">
+        <box marginTop={2} marginBottom={2} flexDirection="column" alignItems="center">
+          <text fg="white">Enter your name:</text>
+          <box marginTop={1} marginBottom={1}>
+            <text bg="gray" fg="white">
               {"  "}{nameInput || "_"}{"  "}
-            </Text>
-          </Box>
-          <Box marginY={1} />
-          <Text color="gray" dimColor>Press Enter to save, Esc to cancel</Text>
-        </Box>
+            </text>
+          </box>
+          <box marginTop={1} marginBottom={1} />
+          <text fg="gray" attributes={TextAttributes.DIM}>Press Enter to save, Esc to cancel</text>
+        </box>
       ) : joinMode ? (
-        <Box marginY={2} flexDirection="column" alignItems="center">
-          <Text color="white">Enter session code:</Text>
-          <Box marginY={1}>
-            <Text backgroundColor="gray" color="white">
+        <box marginTop={2} marginBottom={2} flexDirection="column" alignItems="center">
+          <text fg="white">Enter session code:</text>
+          <box marginTop={1} marginBottom={1}>
+            <text bg="gray" fg="white">
               {"  "}{joinCodeInput.padEnd(6, "_")}{"  "}
-            </Text>
-          </Box>
-          <Box marginY={1} />
-          <Text color="gray" dimColor>Press Enter to join, Esc to cancel</Text>
-        </Box>
+            </text>
+          </box>
+          <box marginTop={1} marginBottom={1} />
+          <text fg="gray" attributes={TextAttributes.DIM}>Press Enter to join, Esc to cancel</text>
+        </box>
       ) : (
-        <Box marginY={2} flexDirection="column" alignItems="center">
-          <Text color="gray">No active group session</Text>
-          <Box marginY={2} />
-          <Box marginBottom={1}>
-            <Text color="gray">Your name: </Text>
-            <Text color="cyan" bold>{userName}</Text>
-          </Box>
-          <Box marginY={1} />
-          <Text color="white">[H] Host  [J] Join  [E] Edit name</Text>
-        </Box>
+        <box marginTop={2} marginBottom={2} flexDirection="column" alignItems="center">
+          <text fg="gray">No active group session</text>
+          <box marginTop={2} marginBottom={2} />
+          <box marginBottom={1} flexDirection="row">
+            <text fg="gray">Your name: </text>
+            <text fg="cyan" attributes={TextAttributes.BOLD}>{userName}</text>
+          </box>
+          <box marginTop={1} marginBottom={1} />
+          <text fg="white">[H] Host  [J] Join  [E] Edit name</text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 }

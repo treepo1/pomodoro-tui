@@ -3,6 +3,7 @@ import { version } from "../../package.json";
 
 export const GITHUB_REPO = "treepo1/pomodoro-tui";
 export const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
 export const CHECK_TIMEOUT_MS = 5000;
 
 export function getPlatformInfo(): PlatformInfo {
@@ -28,7 +29,8 @@ export function getPlatformInfo(): PlatformInfo {
   }
 
   // Map architecture
-  switch (arch) {
+  const archStr = arch as string;
+  switch (archStr) {
     case "x64":
     case "amd64":
       normalizedArch = "x64";

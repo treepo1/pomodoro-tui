@@ -15,6 +15,7 @@ export interface MusicStatus {
 export interface LofiStation {
   name: string;
   url: string;
+  icon: string;
 }
 
 // Curated list of lofi radio streams
@@ -22,34 +23,42 @@ export const LOFI_STATIONS: LofiStation[] = [
   {
     name: "Lofi Girl",
     url: "https://play.streamafrica.net/lofiradio",
+    icon: "🎧",
   },
   {
     name: "ChillHop",
     url: "https://streams.fluxfm.de/Chillhop/mp3-128/streams.fluxfm.de/",
+    icon: "🐰",
   },
   {
     name: "Box Lofi",
     url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+    icon: "📦",
   },
   {
     name: "Lofi Cafe",
     url: "https://stream.zeno.fm/0r0xa792kwzuv",
+    icon: "☕",
   },
   {
     name: "Study Beats",
     url: "https://stream.zeno.fm/yn65fsaurfhvv",
+    icon: "📚",
   },
   {
     name: "Antena 1",
     url: "https://radio.garden/api/ara/content/listen/Q6JROd6G/channel.mp3",
+    icon: "📡",
   },
   {
     name: "FM Sergipe",
     url: "https://radio.garden/api/ara/content/listen/EQzCDHL3/channel.mp3",
+    icon: "🌴",
   },
   {
     name: "Smooth Jazz",
     url: "https://radio.garden/api/ara/content/listen/1vlrqH6v/channel.mp3",
+    icon: "🎷",
   },
 ];
 
@@ -61,8 +70,9 @@ export class RadioPlayer {
   private volume: number = 50;
   private mpvSocketPath: string;
 
-  constructor(initialVolume: number = 50) {
+  constructor(initialVolume: number = 50, initialStationIndex: number = 0) {
     this.volume = Math.max(0, Math.min(100, initialVolume));
+    this.currentStationIndex = Math.max(0, Math.min(LOFI_STATIONS.length - 1, initialStationIndex));
     // Windows uses named pipes, Unix uses socket files
     if (process.platform === "win32") {
       this.mpvSocketPath = `\\\\.\\pipe\\pomotui-mpv-${process.pid}`;
@@ -266,9 +276,9 @@ export class MusicManager {
   private mode: MusicMode;
   private radio: RadioPlayer;
 
-  constructor(mode: MusicMode = "radio", initialVolume: number = 50) {
+  constructor(mode: MusicMode = "radio", initialVolume: number = 50, initialStationIndex: number = 0) {
     this.mode = mode;
-    this.radio = new RadioPlayer(initialVolume);
+    this.radio = new RadioPlayer(initialVolume, initialStationIndex);
   }
 
   async play(): Promise<boolean> {
@@ -310,9 +320,10 @@ export class MusicManager {
 
     // Radio mode
     const status = this.radio.getStatus();
-    const icon = status.isPlaying ? "♪" : "♪";
+    const station = this.radio.getCurrentStation();
+    const playIcon = status.isPlaying ? "▶" : "⏸";
     const state = status.isPlaying ? "" : " (paused)";
-    return `${icon} ${status.stationName}${state} [${status.volume}%]`;
+    return `${station.icon} ${playIcon} ${status.stationName}${state} [${status.volume}%]`;
   }
 
   getMode(): MusicMode {
@@ -339,6 +350,10 @@ export class MusicManager {
 
   setVolume(level: number): void {
     this.radio.setVolume(level);
+  }
+
+  getStationIndex(): number {
+    return this.radio.getStatus().stationIndex;
   }
 
   volumeUp(step: number = 10): void {

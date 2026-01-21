@@ -212,4 +212,66 @@ export class HistoryManager {
   getFilePath(): string {
     return this.filePath;
   }
+
+  // Get stats for last week (Monday to Sunday of the previous week)
+  getLastWeekStats(): { pomodoros: number; totalMinutes: number } {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    
+    // Calculate last week's Monday
+    const mondayOffset = dayOfWeek === 0 ? -13 : -6 - dayOfWeek;
+    const lastMonday = new Date(now);
+    lastMonday.setDate(now.getDate() + mondayOffset);
+    lastMonday.setHours(0, 0, 0, 0);
+    
+    // Calculate last week's Sunday
+    const lastSunday = new Date(lastMonday);
+    lastSunday.setDate(lastMonday.getDate() + 6);
+    
+    return this.getStatsForDateRange(lastMonday, lastSunday);
+  }
+
+  // Get most productive day of the week based on historical averages
+  getMostProductiveDay(): { dayName: string; avgPomodoros: number } | null {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const workEntries = this.history.entries.filter((e) => e.sessionType === 'work');
+    
+    if (workEntries.length === 0) return null;
+    
+    // Count pomodoros and occurrences for each day of week
+    const dayStats: { [key: number]: { total: number; days: Set<string> } } = {};
+    for (let i = 0; i < 7; i++) {
+      dayStats[i] = { total: 0, days: new Set() };
+    }
+    
+    for (const entry of workEntries) {
+      const date = new Date(entry.date);
+      const dayIndex = date.getDay();
+      dayStats[dayIndex].total++;
+      dayStats[dayIndex].days.add(entry.date);
+    }
+    
+    // Find day with highest average
+    let bestDay = 0;
+    let bestAvg = 0;
+    
+    for (let i = 0; i < 7; i++) {
+      const stats = dayStats[i];
+      const dayCount = stats.days.size;
+      if (dayCount > 0) {
+        const avg = stats.total / dayCount;
+        if (avg > bestAvg) {
+          bestAvg = avg;
+          bestDay = i;
+        }
+      }
+    }
+    
+    if (bestAvg === 0) return null;
+    
+    return {
+      dayName: dayNames[bestDay],
+      avgPomodoros: Math.round(bestAvg * 10) / 10,
+    };
+  }
 }
