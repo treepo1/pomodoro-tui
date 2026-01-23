@@ -1,7 +1,7 @@
 import { TextAttributes, type MouseEvent } from "@opentui/core";
 import { useTerminalDimensions } from "@opentui/react";
-import { useEffect, useState } from "react";
-import type { PomodoroState, PomodoroConfig, JamParticipant } from "../types";
+import { useState, useEffect } from "react";
+import type { PomodoroState, PomodoroConfig, GroupParticipant } from "../types";
 import { renderBigText, getOptimalTimerMode, getBigTextWidth } from "../ui";
 import {
   getSessionColor,
@@ -9,7 +9,7 @@ import {
   getSessionDuration,
   getConnectionDisplay,
 } from "../utils";
-import type { JamConnectionState } from "../types";
+import type { GroupConnectionState } from "../types";
 import { TaskList } from "./TaskList";
 import type { Project, ProjectTask } from "../projects";
 import {
@@ -29,13 +29,13 @@ const BREAKPOINTS = {
 interface TimerTabProps {
   state: PomodoroState;
   config: PomodoroConfig;
-  isJamMode: boolean;
+  isGroupMode: boolean;
   isCurrentHost: boolean;
   canControl: boolean;
-  jamSessionCode: string;
-  jamConnectionState: JamConnectionState;
-  jamParticipants: JamParticipant[];
-  jamManagerId?: string;
+  groupSessionCode: string;
+  groupConnectionState: GroupConnectionState;
+  groupParticipants: GroupParticipant[];
+  groupManagerId?: string;
   todayStats: { pomodoros: number; totalMinutes: number };
   musicStatus: string;
   petId: string;
@@ -75,7 +75,7 @@ function PlayPauseButton({
   const color = isRunning ? "green" : isHovered ? "cyan" : "yellow";
 
   if (!canControl) {
-    // Show status without click interaction for non-hosts in jam mode
+    // Show status without click interaction for non-hosts in group mode
     return (
       <box marginTop={1} marginBottom={1}>
         <text fg={isRunning ? "green" : "yellow"}>
@@ -100,9 +100,11 @@ function PlayPauseButton({
           : undefined
       }
     >
-      <text fg={color} attributes={isHovered ? TextAttributes.BOLD : undefined}>
-        {icon}{" "}
-        {isHovered ? (isRunning ? "CLICK TO PAUSE" : "CLICK TO START") : label}
+      <text
+        fg={isHovered ? "cyan" : color}
+        attributes={isHovered ? TextAttributes.BOLD : undefined}
+      >
+        {icon} {label}
       </text>
     </box>
   );
@@ -111,13 +113,13 @@ function PlayPauseButton({
 export function TimerTab({
   state,
   config,
-  isJamMode,
+  isGroupMode,
   isCurrentHost,
   canControl,
-  jamSessionCode,
-  jamConnectionState,
-  jamParticipants,
-  jamManagerId,
+  groupSessionCode,
+  groupConnectionState,
+  groupParticipants,
+  groupManagerId,
   todayStats,
   musicStatus,
   petId,
@@ -175,7 +177,7 @@ export function TimerTab({
     "\u2591".repeat(progressBarLength - filledLength);
 
   const bigTimeLines = renderBigText(time, timerMode);
-  const connDisplay = getConnectionDisplay(jamConnectionState);
+  const connDisplay = getConnectionDisplay(groupConnectionState);
 
   // Pet animation
   const [petFrame, setPetFrame] = useState(0);
@@ -211,12 +213,12 @@ export function TimerTab({
         <box marginBottom={1}>
           <text fg={color}>{progressBar}</text>
         </box>
-        {isJamMode && (
-          <text fg="yellow" attributes={TextAttributes.DIM}>
-            JAM: {jamSessionCode}
+        {isGroupMode && (
+          <text fg="cyan" attributes={TextAttributes.DIM}>
+            Session: {groupSessionCode}
           </text>
         )}
-        {!isJamMode && (
+        {!isGroupMode && (
           <text fg="gray" attributes={TextAttributes.DIM}>
             Today: {todayStats.pomodoros}p ({todayStats.totalMinutes}m)
           </text>
@@ -265,12 +267,17 @@ export function TimerTab({
           canControl={canControl}
         />
 
-        {/* Jam Session Info */}
-        {isJamMode && (
+        {/* Group Session Info */}
+        {isGroupMode && (
           <>
-            <box marginTop={1} flexDirection="column" alignItems="center">
-              <text fg="yellow" attributes={TextAttributes.BOLD}>
-                JAM SESSION: {jamSessionCode}
+            <box
+              marginTop={1}
+              marginBottom={1}
+              flexDirection="column"
+              alignItems="center"
+            >
+              <text fg="cyan" attributes={TextAttributes.BOLD}>
+                Session: {groupSessionCode}
               </text>
               <box>
                 <text fg={connDisplay.color}>
@@ -279,13 +286,20 @@ export function TimerTab({
               </box>
             </box>
 
-            {jamParticipants.length > 0 && (
-              <box marginTop={1} flexDirection="column" alignItems="center">
-                <text fg="gray">Participants ({jamParticipants.length}):</text>
+            {groupParticipants.length > 0 && (
+              <box
+                marginTop={1}
+                marginBottom={1}
+                flexDirection="column"
+                alignItems="center"
+              >
+                <text fg="gray">
+                  Participants ({groupParticipants.length}):
+                </text>
                 {(() => {
                   let transferIndex = 0;
-                  return jamParticipants.map((p) => {
-                    const isMe = p.id === jamManagerId;
+                  return groupParticipants.map((p) => {
+                    const isMe = p.id === groupManagerId;
                     const canTransferTo = isCurrentHost && !p.isHost && !isMe;
                     const transferNum = canTransferTo ? ++transferIndex : 0;
                     return (
@@ -314,16 +328,16 @@ export function TimerTab({
             )}
 
             {isCurrentHost && (
-              <box marginTop={1}  marginBottom={1}>
-                <text fg="gray">Share: pomotui --join {jamSessionCode}</text>
+              <box marginTop={1} marginBottom={1}>
+                <text fg="gray">Share: pomotui --join {groupSessionCode}</text>
               </box>
             )}
           </>
         )}
 
-        {/* Stats when not in jam mode */}
-        {!isJamMode && (
-          <box>
+        {/* Stats when not in group mode */}
+        {!isGroupMode && (
+          <box marginTop={1} marginBottom={1}>
             <text fg="gray">
               Today: {todayStats.pomodoros} pomodoros ({todayStats.totalMinutes}
               m)

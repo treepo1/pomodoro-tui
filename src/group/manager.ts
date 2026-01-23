@@ -1,34 +1,39 @@
-import { Pomodoro } from '../pomodoro';
-import type { PomodoroState } from '../types';
-import { JamClient } from './client';
-import { JAM_CONFIG } from './config';
-import { generateSessionCode } from './session-code';
-import type { JamMessage, JamParticipant, JamConnectionState, JamControlAction } from './types';
+import { Pomodoro } from "../pomodoro";
+import type { PomodoroState } from "../types";
+import { GroupClient } from "./client";
+import { GROUP_CONFIG } from "./config";
+import { generateSessionCode } from "./session-code";
+import type {
+  GroupMessage,
+  GroupParticipant,
+  GroupConnectionState,
+  GroupControlAction,
+} from "./types";
 
-export interface JamManagerOptions {
+export interface GroupManagerOptions {
   pomodoro: Pomodoro;
   isHost: boolean;
   sessionCode?: string; // Required for participants, generated for hosts
   participantName: string;
   server?: string;
   onStateChange?: () => void;
-  onParticipantsChange?: (participants: JamParticipant[]) => void;
-  onConnectionChange?: (state: JamConnectionState) => void;
+  onParticipantsChange?: (participants: GroupParticipant[]) => void;
+  onConnectionChange?: (state: GroupConnectionState) => void;
   onHostChange?: (isHost: boolean) => void;
 }
 
-export class JamManager {
-  private client: JamClient | null = null;
+export class GroupManager {
+  private client: GroupClient | null = null;
   private pomodoro: Pomodoro;
-  private options: JamManagerOptions;
+  private options: GroupManagerOptions;
   private participantId: string;
   private sessionCode: string;
-  private participants: JamParticipant[] = [];
-  private connectionState: JamConnectionState = 'disconnected';
+  private participants: GroupParticipant[] = [];
+  private connectionState: GroupConnectionState = "disconnected";
   private stateSyncTimer: NodeJS.Timeout | null = null;
   private _isHost: boolean;
 
-  constructor(options: JamManagerOptions) {
+  constructor(options: GroupManagerOptions) {
     this.options = options;
     this.pomodoro = options.pomodoro;
     this.participantId = this.generateParticipantId();
@@ -37,11 +42,11 @@ export class JamManager {
     // Generate code for hosts, use provided code for participants
     this.sessionCode = options.isHost
       ? generateSessionCode()
-      : options.sessionCode || '';
+      : options.sessionCode || "";
 
-    // Set jam mode on pomodoro for participants (they receive state from host)
+    // Set group mode on pomodoro for participants (they receive state from host)
     if (!options.isHost) {
-      this.pomodoro.setJamMode(true);
+      this.pomodoro.setGroupMode(true);
     }
   }
 
@@ -50,7 +55,7 @@ export class JamManager {
   }
 
   async connect(): Promise<void> {
-    this.client = new JamClient({
+    this.client = new GroupClient({
       server: this.options.server,
       sessionCode: this.sessionCode,
       participantId: this.participantId,
@@ -58,7 +63,8 @@ export class JamManager {
       isHost: this.options.isHost,
       onMessage: (message) => this.handleMessage(message),
       onConnectionChange: (state) => this.handleConnectionChange(state),
-      onParticipantsUpdate: (participants) => this.handleParticipantsUpdate(participants),
+      onParticipantsUpdate: (participants) =>
+        this.handleParticipantsUpdate(participants),
     });
 
     await this.client.connect();
@@ -69,54 +75,56 @@ export class JamManager {
     }
   }
 
-  private handleMessage(message: JamMessage): void {
+  private handleMessage(message: GroupMessage): void {
     switch (message.type) {
-      case 'state-sync':
+      case "state-sync":
         // Participants receive state from host
         if (!this._isHost && message.senderId !== this.participantId) {
-          const stateMsg = message as JamMessage & { state: PomodoroState };
+          const stateMsg = message as GroupMessage & { state: PomodoroState };
           this.pomodoro.setState(stateMsg.state);
           this.options.onStateChange?.();
         }
         break;
 
-      case 'control':
+      case "control":
         // Participants receive control commands from host
         if (!this._isHost) {
-          const controlMsg = message as JamMessage & { action: JamControlAction };
+          const controlMsg = message as GroupMessage & {
+            action: GroupControlAction;
+          };
           this.handleControlAction(controlMsg.action);
         }
         break;
 
-      case 'participant-update':
+      case "participant-update":
         // Handled in onParticipantsUpdate callback
         break;
     }
   }
 
-  private handleControlAction(action: JamControlAction): void {
+  private handleControlAction(action: GroupControlAction): void {
     // Control actions are already applied via state sync
     // This is for any immediate UI feedback if needed
     this.options.onStateChange?.();
   }
 
-  private handleConnectionChange(state: JamConnectionState): void {
+  private handleConnectionChange(state: GroupConnectionState): void {
     this.connectionState = state;
     this.options.onConnectionChange?.(state);
   }
 
-  private handleParticipantsUpdate(participants: JamParticipant[]): void {
+  private handleParticipantsUpdate(participants: GroupParticipant[]): void {
     this.participants = participants;
 
     // Check if current user's host status changed
-    const me = participants.find(p => p.id === this.participantId);
+    const me = participants.find((p) => p.id === this.participantId);
     if (me && me.isHost !== this._isHost) {
       const wasHost = this._isHost;
       this._isHost = me.isHost;
 
-      // If we became the host, start broadcasting and disable jam mode
+      // If we became the host, start broadcasting and disable gr mode
       if (this._isHost && !wasHost) {
-        this.pomodoro.setJamMode(false);
+        this.pomodoro.setGroupMode(false);
         this.startStateBroadcast();
       }
 
@@ -131,25 +139,25 @@ export class JamManager {
     this.stateSyncTimer = setInterval(() => {
       if (this.client?.isConnected()) {
         this.client.send({
-          type: 'state-sync',
+          type: "state-sync",
           senderId: this.participantId,
           timestamp: Date.now(),
           state: this.pomodoro.getState(),
-        } as JamMessage);
+        } as GroupMessage);
       }
-    }, JAM_CONFIG.stateSyncInterval);
+    }, GROUP_CONFIG.stateSyncInterval);
   }
 
   // Control methods (only work for host)
-  sendControl(action: JamControlAction): void {
+  sendControl(action: GroupControlAction): void {
     if (!this._isHost || !this.client?.isConnected()) return;
 
     this.client.send({
-      type: 'control',
+      type: "control",
       senderId: this.participantId,
       timestamp: Date.now(),
       action,
-    } as JamMessage);
+    } as GroupMessage);
   }
 
   // Transfer host to another participant (only works for host)
@@ -158,16 +166,16 @@ export class JamManager {
     if (newHostId === this.participantId) return; // Can't transfer to self
 
     this.client.send({
-      type: 'transfer-host',
+      type: "transfer-host",
       senderId: this.participantId,
       timestamp: Date.now(),
       newHostId,
-    } as JamMessage);
+    } as GroupMessage);
   }
 
   // Get list of other participants (non-host) for transfer UI
-  getOtherParticipants(): JamParticipant[] {
-    return this.participants.filter(p => p.id !== this.participantId);
+  getOtherParticipants(): GroupParticipant[] {
+    return this.participants.filter((p) => p.id !== this.participantId);
   }
 
   getParticipantId(): string {
@@ -182,7 +190,7 @@ export class JamManager {
 
     this.client?.disconnect();
     this.client = null;
-    this.connectionState = 'disconnected';
+    this.connectionState = "disconnected";
   }
 
   // Getters
@@ -190,11 +198,11 @@ export class JamManager {
     return this.sessionCode;
   }
 
-  getParticipants(): JamParticipant[] {
+  getParticipants(): GroupParticipant[] {
     return this.participants;
   }
 
-  getConnectionState(): JamConnectionState {
+  getConnectionState(): GroupConnectionState {
     return this.connectionState;
   }
 
@@ -203,6 +211,6 @@ export class JamManager {
   }
 
   isConnected(): boolean {
-    return this.connectionState === 'connected';
+    return this.connectionState === "connected";
   }
 }

@@ -1,7 +1,7 @@
 // PartyKit server configuration
-export const DEFAULT_JAM_SERVER = "https://pomodoro-jam.treepo1.partykit.dev";
+export const DEFAULT_GROUP_SERVER = "https://pomodoro-jam.treepo1.partykit.dev";
 
-export const JAM_CONFIG = {
+export const GROUP_CONFIG = {
   // State sync interval in milliseconds (host broadcasts state)
   stateSyncInterval: 1000,
 

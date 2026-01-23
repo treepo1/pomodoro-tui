@@ -1,4 +1,4 @@
-import type * as Party from 'partykit/server';
+import type * as Party from "partykit/server";
 
 interface Participant {
   id: string;
@@ -7,14 +7,14 @@ interface Participant {
   joinedAt: number;
 }
 
-interface JamMessage {
+interface GroupMessage {
   type: string;
   senderId: string;
   timestamp: number;
   [key: string]: unknown;
 }
 
-export default class JamServer implements Party.Server {
+export default class GroupServer implements Party.Server {
   private participants: Map<string, Participant> = new Map();
   private hostId: string | null = null;
 
@@ -22,8 +22,8 @@ export default class JamServer implements Party.Server {
 
   onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
     const url = new URL(ctx.request.url);
-    const name = url.searchParams.get('name') || 'Anonymous';
-    const isHost = url.searchParams.get('isHost') === 'true';
+    const name = url.searchParams.get("name") || "Anonymous";
+    const isHost = url.searchParams.get("isHost") === "true";
 
     const participant: Participant = {
       id: conn.id,
@@ -47,33 +47,33 @@ export default class JamServer implements Party.Server {
 
   onMessage(message: string, sender: Party.Connection) {
     try {
-      const data = JSON.parse(message) as JamMessage;
+      const data = JSON.parse(message) as GroupMessage;
 
       switch (data.type) {
-        case 'state-sync':
+        case "state-sync":
           // Only host can broadcast state
           if (sender.id === this.hostId) {
             this.room.broadcast(message, [sender.id]);
           }
           break;
 
-        case 'control':
+        case "control":
           // Only host can send control messages
           if (sender.id === this.hostId) {
             this.room.broadcast(message, [sender.id]);
           }
           break;
 
-        case 'join':
+        case "join":
           // Acknowledge join by sending current participants
           this.broadcastParticipants();
           break;
 
-        case 'leave':
+        case "leave":
           // Will be handled in onClose
           break;
 
-        case 'transfer-host':
+        case "transfer-host":
           // Only current host can transfer
           if (sender.id === this.hostId && data.newHostId) {
             const newHost = this.participants.get(data.newHostId as string);
@@ -94,7 +94,7 @@ export default class JamServer implements Party.Server {
           this.room.broadcast(message);
       }
     } catch (err) {
-      console.error('Failed to parse message:', err);
+      console.error("Failed to parse message:", err);
     }
   }
 
@@ -128,9 +128,9 @@ export default class JamServer implements Party.Server {
   private broadcastParticipants() {
     const participantList = Array.from(this.participants.values());
 
-    const message: JamMessage = {
-      type: 'participant-update',
-      senderId: 'server',
+    const message: GroupMessage = {
+      type: "participant-update",
+      senderId: "server",
       timestamp: Date.now(),
       participants: participantList,
     };

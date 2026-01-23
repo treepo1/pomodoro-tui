@@ -4,11 +4,15 @@ import { createRoot, useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { Pomodoro } from "./pomodoro";
 import { HistoryManager } from "./history";
 import { MusicManager } from "./music";
-import { JamManager, validateSessionCode, normalizeSessionCode } from "./jam";
+import {
+  GroupManager,
+  validateSessionCode,
+  normalizeSessionCode,
+} from "./group";
 import type {
   PomodoroState,
-  JamParticipant,
-  JamConnectionState,
+  GroupParticipant,
+  GroupConnectionState,
 } from "./types";
 import { checkForUpdates } from "./updater";
 import { parseConfig } from "./cli";
@@ -55,7 +59,7 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [editNameMode, setEditNameMode] = useState(false);
   const [userName, setUserNameState] = useState(
-    () => config.jam.participantName || settingsManager.getUserName(),
+    () => config.group.participantName || settingsManager.getUserName(),
   );
   const [nameInput, setNameInput] = useState("");
 
@@ -89,85 +93,89 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
   const [addProjectTaskMode, setAddProjectTaskMode] = useState(false);
   const [projectTaskInput, setProjectTaskInput] = useState("");
 
-  // Jam session state
-  const [jamManager, setJamManager] = useState<JamManager | null>(null);
-  const [jamParticipants, setJamParticipants] = useState<JamParticipant[]>([]);
-  const [jamConnectionState, setJamConnectionState] =
-    useState<JamConnectionState>("disconnected");
-  const [jamSessionCode, setJamSessionCode] = useState<string>("");
+  // Group session state
+  const [groupManager, setGroupManager] = useState<GroupManager | null>(null);
+  const [groupParticipants, setGroupParticipants] = useState<
+    GroupParticipant[]
+  >([]);
+  const [groupConnectionState, setGroupConnectionState] =
+    useState<GroupConnectionState>("disconnected");
+  const [groupSessionCode, setGroupSessionCode] = useState<string>("");
   const [isCurrentHost, setIsCurrentHost] = useState<boolean>(
-    config.jam.isHost,
+    config.group.isHost,
   );
 
   // Refs for stale closure avoidance
-  const jamManagerRef = useRef<JamManager | null>(null);
-  const jamParticipantsRef = useRef<JamParticipant[]>([]);
-  const isCurrentHostRef = useRef<boolean>(config.jam.isHost);
+  const groupManagerRef = useRef<GroupManager | null>(null);
+  const groupParticipantsRef = useRef<GroupParticipant[]>([]);
+  const isCurrentHostRef = useRef<boolean>(config.group.isHost);
 
   useEffect(() => {
-    jamManagerRef.current = jamManager;
-  }, [jamManager]);
+    groupManagerRef.current = groupManager;
+  }, [groupManager]);
   useEffect(() => {
-    jamParticipantsRef.current = jamParticipants;
-  }, [jamParticipants]);
+    groupParticipantsRef.current = groupParticipants;
+  }, [groupParticipants]);
   useEffect(() => {
     isCurrentHostRef.current = isCurrentHost;
   }, [isCurrentHost]);
 
-  const isJamMode = jamManager !== null;
-  const canControl = !isJamMode || isCurrentHost;
+  const isGroupMode = groupManager !== null;
+  const canControl = !isGroupMode || isCurrentHost;
 
   const startHosting = () => {
-    if (jamManager) return;
-    const manager = new JamManager({
+    if (groupManager) return;
+    const manager = new GroupManager({
       pomodoro,
       isHost: true,
       participantName: userName,
-      server: config.jam.server,
+      server: config.group.server,
       onStateChange: () => setState(pomodoro.getState()),
-      onParticipantsChange: (participants) => setJamParticipants(participants),
-      onConnectionChange: (connState) => setJamConnectionState(connState),
+      onParticipantsChange: (participants) =>
+        setGroupParticipants(participants),
+      onConnectionChange: (connState) => setGroupConnectionState(connState),
       onHostChange: (isHost) => setIsCurrentHost(isHost),
     });
-    setJamManager(manager);
-    jamManagerRef.current = manager;
-    setJamSessionCode(manager.getSessionCode());
+    setGroupManager(manager);
+    groupManagerRef.current = manager;
+    setGroupSessionCode(manager.getSessionCode());
     setIsCurrentHost(true);
     isCurrentHostRef.current = true;
     manager.connect().catch(() => {});
   };
 
   const joinSession = (code: string) => {
-    if (jamManager) return;
+    if (groupManager) return;
     const normalizedCode = normalizeSessionCode(code);
     if (!validateSessionCode(normalizedCode)) return;
-    const manager = new JamManager({
+    const manager = new GroupManager({
       pomodoro,
       isHost: false,
       sessionCode: normalizedCode,
       participantName: userName,
-      server: config.jam.server,
+      server: config.group.server,
       onStateChange: () => setState(pomodoro.getState()),
-      onParticipantsChange: (participants) => setJamParticipants(participants),
-      onConnectionChange: (connState) => setJamConnectionState(connState),
+      onParticipantsChange: (participants) =>
+        setGroupParticipants(participants),
+      onConnectionChange: (connState) => setGroupConnectionState(connState),
       onHostChange: (isHost) => setIsCurrentHost(isHost),
     });
-    setJamManager(manager);
-    jamManagerRef.current = manager;
-    setJamSessionCode(manager.getSessionCode());
+    setGroupManager(manager);
+    groupManagerRef.current = manager;
+    setGroupSessionCode(manager.getSessionCode());
     setIsCurrentHost(false);
     isCurrentHostRef.current = false;
     manager.connect().catch(() => {});
   };
 
   const stopSession = () => {
-    if (!jamManager) return;
-    jamManager.disconnect();
-    setJamManager(null);
-    jamManagerRef.current = null;
-    setJamSessionCode("");
-    setJamParticipants([]);
-    setJamConnectionState("disconnected");
+    if (!groupManager) return;
+    groupManager.disconnect();
+    setGroupManager(null);
+    groupManagerRef.current = null;
+    setGroupSessionCode("");
+    setGroupParticipants([]);
+    setGroupConnectionState("disconnected");
     setIsCurrentHost(false);
     isCurrentHostRef.current = false;
   };
@@ -190,7 +198,7 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
     }
   }, []);
 
-  // Initialize pomodoro and jam session
+  // Initialize pomodoro and group session
   useEffect(() => {
     pomodoro.setOnTick((newState) => setState(newState));
 
@@ -202,28 +210,28 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       notifyUser();
     });
 
-    if (config.jam.enabled) {
-      const manager = new JamManager({
+    if (config.group.enabled) {
+      const manager = new GroupManager({
         pomodoro,
-        isHost: config.jam.isHost,
-        sessionCode: config.jam.sessionCode,
-        participantName: config.jam.participantName || "",
-        server: config.jam.server,
+        isHost: config.group.isHost,
+        sessionCode: config.group.sessionCode,
+        participantName: config.group.participantName || "",
+        server: config.group.server,
         onStateChange: () => setState(pomodoro.getState()),
         onParticipantsChange: (participants) =>
-          setJamParticipants(participants),
-        onConnectionChange: (connState) => setJamConnectionState(connState),
+          setGroupParticipants(participants),
+        onConnectionChange: (connState) => setGroupConnectionState(connState),
         onHostChange: (isHost) => setIsCurrentHost(isHost),
       });
-      setJamManager(manager);
-      setJamSessionCode(manager.getSessionCode());
+      setGroupManager(manager);
+      setGroupSessionCode(manager.getSessionCode());
       manager.connect().catch(() => {});
     }
 
     return () => {
       pomodoro.stop();
       music.cleanup();
-      jamManager?.disconnect();
+      groupManager?.disconnect();
     };
   }, []);
 
@@ -283,10 +291,6 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
         setProjectInput("");
         return;
       }
-      if (key.backspace || key.delete) {
-        setProjectInput((p) => p.slice(0, -1));
-        return;
-      }
       if (isBackspace || isDelete) {
         setProjectInput((p) => p.slice(0, -1));
         return;
@@ -318,10 +322,6 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
         setProjectTaskInput("");
         return;
       }
-      if (key.backspace || key.delete) {
-        setProjectTaskInput((p) => p.slice(0, -1));
-        return;
-      }
       if (isBackspace || isDelete) {
         setProjectTaskInput((p) => p.slice(0, -1));
         return;
@@ -348,10 +348,6 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
         }
         setTimerAddTaskMode(false);
         setTimerTaskInput("");
-        return;
-      }
-      if (key.backspace || key.delete) {
-        setTimerTaskInput((p) => p.slice(0, -1));
         return;
       }
       if (isBackspace || isDelete) {
@@ -630,20 +626,20 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
     if (input === "q" || isEscape || (isCtrl && input === "c")) {
       pomodoro.stop();
       music.cleanup();
-      jamManager?.disconnect();
+      groupManager?.disconnect();
       onExit(state.completedPomodoros);
     } else if (input === "s" && canControl) {
       pomodoro.start();
-      jamManager?.sendControl("start");
+      groupManager?.sendControl("start");
     } else if (input === "p" && canControl) {
       pomodoro.pause();
-      jamManager?.sendControl("pause");
+      groupManager?.sendControl("pause");
     } else if (input === "r" && canControl) {
       pomodoro.reset();
-      jamManager?.sendControl("reset");
+      groupManager?.sendControl("reset");
     } else if (input === "n" && canControl) {
       pomodoro.skip();
-      jamManager?.sendControl("skip");
+      groupManager?.sendControl("skip");
     } else if (input === "m") {
       music.toggle();
       setMusicStatus(music.getStatusText());
@@ -659,21 +655,22 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
     } else if (input === "-" || input === "_") {
       music.volumeDown();
       setMusicStatus(music.getStatusText());
+      settingsManager.setMusicVolume(music.getVolume());
     } else if (input === "P") {
       setPetId((current) => getNextPetId(current));
-    } else if (input === "h" && activeTab === "group" && !jamManager) {
+    } else if (input === "h" && activeTab === "group" && !groupManager) {
       startHosting();
-    } else if (input === "j" && activeTab === "group" && !jamManager) {
+    } else if (input === "j" && activeTab === "group" && !groupManager) {
       setJoinMode(true);
       setJoinCodeInput("");
-    } else if (input === "e" && activeTab === "group" && !jamManager) {
+    } else if (input === "e" && activeTab === "group" && !groupManager) {
       setEditNameMode(true);
       setNameInput(userName);
-    } else if (input === "l" && activeTab === "group" && jamManager) {
+    } else if (input === "l" && activeTab === "group" && groupManager) {
       stopSession();
     } else if (/^[1-9]$/.test(input || "")) {
-      const manager = jamManagerRef.current;
-      const participants = jamParticipantsRef.current;
+      const manager = groupManagerRef.current;
+      const participants = groupParticipantsRef.current;
       const amHost = isCurrentHostRef.current;
       if (amHost && manager) {
         const myId = manager.getParticipantId();
@@ -718,13 +715,13 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
         <TimerTab
           state={state}
           config={config.pomodoro}
-          isJamMode={isJamMode}
+          isGroupMode={isGroupMode}
           isCurrentHost={isCurrentHost}
           canControl={canControl}
-          jamSessionCode={jamSessionCode}
-          jamConnectionState={jamConnectionState}
-          jamParticipants={jamParticipants}
-          jamManagerId={jamManager?.getParticipantId()}
+          groupSessionCode={groupSessionCode}
+          groupConnectionState={groupConnectionState}
+          groupParticipants={groupParticipants}
+          groupManagerId={groupManager?.getParticipantId()}
           todayStats={todayStats}
           musicStatus={musicStatus}
           petId={petId}
@@ -758,7 +755,7 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
             } else {
               pomodoro.start();
             }
-            // Jam mode state sync happens automatically via the timer
+            // group mode state sync happens automatically via the timer
           }}
         />
       )}
@@ -823,12 +820,12 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
       {activeTab === "group" && (
         <GroupTab
-          isJamMode={isJamMode}
+          isGroupMode={isGroupMode}
           isCurrentHost={isCurrentHost}
-          jamSessionCode={jamSessionCode}
-          jamConnectionState={jamConnectionState}
-          jamParticipants={jamParticipants}
-          jamManagerId={jamManager?.getParticipantId()}
+          groupSessionCode={groupSessionCode}
+          groupConnectionState={groupConnectionState}
+          groupParticipants={groupParticipants}
+          groupManagerId={groupManager?.getParticipantId()}
           userName={userName}
           editNameMode={editNameMode}
           nameInput={nameInput}
@@ -840,8 +837,8 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       <Controls
         canControl={canControl}
         isCurrentHost={isCurrentHost}
-        showTransferHint={jamParticipants.length > 1}
         petId={petId}
+        showTransferHint={groupParticipants.length > 1}
       />
     </box>
   );

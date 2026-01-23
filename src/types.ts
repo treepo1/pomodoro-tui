@@ -1,15 +1,15 @@
-export type SessionType = 'work' | 'shortBreak' | 'longBreak';
+export type SessionType = "work" | "shortBreak" | "longBreak";
 
 export interface PomodoroConfig {
-  workDuration: number;      // in minutes
+  workDuration: number; // in minutes
   shortBreakDuration: number; // in minutes
-  longBreakDuration: number;  // in minutes
+  longBreakDuration: number; // in minutes
   pomodorosBeforeLongBreak: number;
 }
 
 export interface PomodoroState {
   currentSession: SessionType;
-  timeRemaining: number;     // in seconds
+  timeRemaining: number; // in seconds
   isRunning: boolean;
   completedPomodoros: number;
 }
@@ -24,10 +24,10 @@ export const DEFAULT_CONFIG: PomodoroConfig = {
 export interface PomodoroHistoryEntry {
   id: string;
   sessionType: SessionType;
-  duration: number;        // in minutes
-  completedAt: string;     // ISO 8601 timestamp
-  date: string;            // YYYY-MM-DD for easy filtering
-  pomodoroNumber: number;  // nth pomodoro of the day
+  duration: number; // in minutes
+  completedAt: string; // ISO 8601 timestamp
+  date: string; // YYYY-MM-DD for easy filtering
+  pomodoroNumber: number; // nth pomodoro of the day
 }
 
 export interface PomodoroHistory {
@@ -36,10 +36,13 @@ export interface PomodoroHistory {
   lastUpdated: string;
 }
 
-// Jam session types
-export type JamConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type GroupConnectionState =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
 
-export interface JamParticipant {
+export interface GroupParticipant {
   id: string;
   name: string;
   isHost: boolean;

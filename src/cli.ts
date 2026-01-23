@@ -1,11 +1,11 @@
 import { parseArgs } from "util";
 import { DEFAULT_CONFIG, type PomodoroConfig } from "./types";
-import { normalizeSessionCode, validateSessionCode } from "./jam";
+import { normalizeSessionCode, validateSessionCode } from "./group";
 import { performUpdate, getCurrentVersion } from "./updater";
 import type { MusicMode } from "./music";
 import { PETS, DEFAULT_PET_ID } from "./pets";
 
-export interface JamConfig {
+export interface GroupConfig {
   enabled: boolean;
   isHost: boolean;
   sessionCode?: string;
@@ -18,8 +18,8 @@ export interface AppConfig {
   historyFile?: string;
   musicMode: MusicMode;
   volume?: number;
-  jam: JamConfig;
   petId: string;
+  group: GroupConfig;
 }
 
 export function showHelp(): void {
@@ -36,14 +36,14 @@ Options:
   -d, --data <path>        Path to history JSON file (default: ~/.pomodoro/history.json)
   -m, --music <mode>       Music mode: radio, off (default: radio)
   -V, --volume <0-100>     Music volume level (default: 50)
-  -p, --pet <type>         Pet type: ${PETS.map(p => p.id).join(", ")} (default: ${DEFAULT_PET_ID})
+  -p, --pet <type>         Pet type: ${PETS.map((p) => p.id).join(", ")} (default: ${DEFAULT_PET_ID})
   -v, --version            Show version number
   --update                 Check for and install updates
   -h, --help               Show this help message
 
-Jam Session (collaborative mode):
-  --host                   Host a new jam session
-  --join <code>            Join an existing jam session by code
+Group Session (collaborative mode):
+  --host                   Host a new group session
+  --join <code>            Join an existing group session by code
   --name <name>            Your display name in the session (uses saved name)
   --server <url>           Custom PartyKit server URL
 
@@ -53,14 +53,14 @@ Examples:
   pomotui --work 45                    # 45min work sessions
   pomotui -d ~/obsidian/pomodoro.json  # Custom history file
   pomotui -m off                       # Disable music
-  pomotui --host --name "Alice"        # Host a jam session
-  pomotui --join XYZ234 --name "Bob"   # Join a jam session
+  pomotui --host --name "Alice"        # Host a group session
+  pomotui --join XYZ234 --name "Bob"   # Join a group session
 
 Controls:
   [s] Start    [p] Pause    [r] Reset    [n] Next    [q] Quit
   [m] Toggle music    [>] Next station    [+/-] Volume up/down
   [P] Change pet
-  (In jam mode, only the host can control the timer)
+  (In group mode, only the host can control the timer)
 
 Music:
   Lofi radio plays automatically during work sessions and pauses during breaks.
@@ -180,7 +180,7 @@ export function parseConfig(): AppConfig | null {
 
     let petId = DEFAULT_PET_ID;
     if (values.pet) {
-      const validPetIds = PETS.map(p => p.id);
+      const validPetIds = PETS.map((p) => p.id);
       if (!validPetIds.includes(values.pet)) {
         console.error(`Error: Pet must be one of: ${validPetIds.join(", ")}`);
         process.exit(1);
@@ -188,7 +188,7 @@ export function parseConfig(): AppConfig | null {
       petId = values.pet;
     }
 
-    const jamEnabled = values.host || !!values.join;
+    const groupEnabled = values.host || !!values.join;
     const isHost = values.host || false;
     const sessionCode = values.join
       ? normalizeSessionCode(values.join)
@@ -206,8 +206,8 @@ export function parseConfig(): AppConfig | null {
       process.exit(1);
     }
 
-    const jam: JamConfig = {
-      enabled: jamEnabled,
+    const group: GroupConfig = {
+      enabled: groupEnabled,
       isHost,
       sessionCode,
       participantName: values.name,
@@ -219,8 +219,8 @@ export function parseConfig(): AppConfig | null {
       historyFile: values.data,
       musicMode,
       volume,
-      jam,
       petId,
+      group,
     };
   } catch (error) {
     if (error instanceof Error) {

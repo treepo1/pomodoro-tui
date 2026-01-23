@@ -1,4 +1,8 @@
-import type { SessionType, PomodoroConfig, JamConnectionState } from "./types";
+import type {
+  SessionType,
+  PomodoroConfig,
+  GroupConnectionState,
+} from "./types";
 
 export function getSessionColor(session: SessionType): string {
   switch (session) {
@@ -36,7 +40,7 @@ export function getSessionDuration(
   }
 }
 
-export function getConnectionDisplay(state: JamConnectionState) {
+export function getConnectionDisplay(state: GroupConnectionState) {
   switch (state) {
     case "connected":
       return { symbol: "●", color: "green", text: "Connected" };

@@ -1,5 +1,5 @@
 {
   "$schema": "https://www.partykit.io/schema.json",
   "name": "pomodoro-jam",
-  "main": "party/jam.ts"
+  "main": "party/group.ts"
 }

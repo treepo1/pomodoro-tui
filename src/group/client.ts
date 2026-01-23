@@ -1,50 +1,54 @@
-import { DEFAULT_JAM_SERVER, JAM_CONFIG } from './config';
-import type { JamMessage, JamParticipant, JamConnectionState } from './types';
+import { DEFAULT_GROUP_SERVER, GROUP_CONFIG } from "./config";
+import type {
+  GroupMessage,
+  GroupParticipant,
+  GroupConnectionState,
+} from "./types";
 
-export interface JamClientOptions {
+export interface GroupClientOptions {
   server?: string;
   sessionCode: string;
   participantId: string;
   participantName: string;
   isHost: boolean;
-  onMessage: (message: JamMessage) => void;
-  onConnectionChange: (state: JamConnectionState) => void;
-  onParticipantsUpdate: (participants: JamParticipant[]) => void;
+  onMessage: (message: GroupMessage) => void;
+  onConnectionChange: (state: GroupConnectionState) => void;
+  onParticipantsUpdate: (participants: GroupParticipant[]) => void;
 }
 
-export class JamClient {
+export class GroupClient {
   private socket: WebSocket | null = null;
-  private options: JamClientOptions;
-  private connectionState: JamConnectionState = 'disconnected';
+  private options: GroupClientOptions;
+  private connectionState: GroupConnectionState = "disconnected";
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
 
-  constructor(options: JamClientOptions) {
+  constructor(options: GroupClientOptions) {
     this.options = options;
   }
 
   async connect(): Promise<void> {
-    let server = this.options.server || DEFAULT_JAM_SERVER;
+    let server = this.options.server || DEFAULT_GROUP_SERVER;
 
     // Strip protocol if present
-    server = server.replace(/^https?:\/\//, '');
+    server = server.replace(/^https?:\/\//, "");
 
     // Build WebSocket URL for PartyKit
     // PartyKit URL format: wss://<project>.<user>.partykit.dev/party/<room>
     const wsUrl = `wss://${server}/party/${this.options.sessionCode}?_pk=${this.options.participantId}&name=${encodeURIComponent(this.options.participantName)}&isHost=${this.options.isHost}`;
 
-    this.setConnectionState('connecting');
+    this.setConnectionState("connecting");
 
     try {
       this.socket = new WebSocket(wsUrl);
 
       this.socket.onopen = () => {
         this.reconnectAttempts = 0;
-        this.setConnectionState('connected');
+        this.setConnectionState("connected");
 
         // Send join message
         this.send({
-          type: 'join',
+          type: "join",
           senderId: this.options.participantId,
           timestamp: Date.now(),
           name: this.options.participantName,
@@ -54,11 +58,11 @@ export class JamClient {
 
       this.socket.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data as string) as JamMessage;
+          const message = JSON.parse(event.data as string) as GroupMessage;
           this.options.onMessage(message);
 
           // Handle participant updates
-          if (message.type === 'participant-update') {
+          if (message.type === "participant-update") {
             this.options.onParticipantsUpdate(message.participants);
           }
         } catch (err) {
@@ -74,37 +78,39 @@ export class JamClient {
         // Error will be followed by close event
       };
     } catch (err) {
-      this.setConnectionState('error');
+      this.setConnectionState("error");
       throw err;
     }
   }
 
   private handleDisconnect(): void {
-    if (this.connectionState === 'disconnected') return;
+    if (this.connectionState === "disconnected") return;
 
-    if (this.reconnectAttempts < JAM_CONFIG.maxReconnectAttempts) {
+    if (this.reconnectAttempts < GROUP_CONFIG.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = JAM_CONFIG.reconnectDelayBase * Math.pow(2, this.reconnectAttempts - 1);
-      this.setConnectionState('connecting');
+      const delay =
+        GROUP_CONFIG.reconnectDelayBase *
+        Math.pow(2, this.reconnectAttempts - 1);
+      this.setConnectionState("connecting");
 
       this.reconnectTimer = setTimeout(() => {
-        if (this.connectionState !== 'disconnected') {
+        if (this.connectionState !== "disconnected") {
           this.connect().catch(() => {
-            this.setConnectionState('error');
+            this.setConnectionState("error");
           });
         }
       }, delay);
     } else {
-      this.setConnectionState('error');
+      this.setConnectionState("error");
     }
   }
 
-  private setConnectionState(state: JamConnectionState): void {
+  private setConnectionState(state: GroupConnectionState): void {
     this.connectionState = state;
     this.options.onConnectionChange(state);
   }
 
-  send(message: JamMessage): void {
+  send(message: GroupMessage): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     }
@@ -116,13 +122,13 @@ export class JamClient {
       this.reconnectTimer = null;
     }
 
-    this.setConnectionState('disconnected');
+    this.setConnectionState("disconnected");
 
     if (this.socket) {
       // Send leave message before disconnecting
       if (this.socket.readyState === WebSocket.OPEN) {
         this.send({
-          type: 'leave',
+          type: "leave",
           senderId: this.options.participantId,
           timestamp: Date.now(),
         });
@@ -133,11 +139,11 @@ export class JamClient {
     }
   }
 
-  getConnectionState(): JamConnectionState {
+  getConnectionState(): GroupConnectionState {
     return this.connectionState;
   }
 
   isConnected(): boolean {
-    return this.connectionState === 'connected';
+    return this.connectionState === "connected";
   }
 }

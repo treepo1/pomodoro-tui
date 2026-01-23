@@ -1,4 +1,9 @@
-import { PomodoroConfig, PomodoroState, SessionType, DEFAULT_CONFIG } from './types';
+import {
+  PomodoroConfig,
+  PomodoroState,
+  SessionType,
+  DEFAULT_CONFIG,
+} from "./types";
 
 export class Pomodoro {
   private config: PomodoroConfig;
@@ -6,12 +11,12 @@ export class Pomodoro {
   private timer: NodeJS.Timeout | null = null;
   private onTick: ((state: PomodoroState) => void) | null = null;
   private onSessionComplete: ((session: SessionType) => void) | null = null;
-  private jamMode: boolean = false;
+  private groupMode: boolean = false;
 
   constructor(config: Partial<PomodoroConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.state = {
-      currentSession: 'work',
+      currentSession: "work",
       timeRemaining: this.config.workDuration * 60,
       isRunning: false,
       completedPomodoros: 0,
@@ -34,16 +39,16 @@ export class Pomodoro {
     return { ...this.config };
   }
 
-  // Set jam mode - when enabled, prevents local timer ticks (participant mode)
-  setJamMode(enabled: boolean): void {
-    this.jamMode = enabled;
+  // Set group mode - when enabled, prevents local timer ticks (participant mode)
+  setGroupMode(enabled: boolean): void {
+    this.groupMode = enabled;
   }
 
-  isJamMode(): boolean {
-    return this.jamMode;
+  isGroupMode(): boolean {
+    return this.groupMode;
   }
 
-  // Apply external state (for jam session participants receiving host state)
+  // Apply external state (for group session participants receiving host state)
   setState(newState: PomodoroState): void {
     const wasRunning = this.state.isRunning;
     const nowRunning = newState.isRunning;
@@ -51,8 +56,8 @@ export class Pomodoro {
     this.state = { ...newState };
 
     // Handle timer sync for participants
-    if (this.jamMode) {
-      // In jam mode (participant), we don't run our own timer
+    if (this.groupMode) {
+      // In group mode (participant), we don't run our own timer
       // Just apply the state from the host
       if (this.timer) {
         clearInterval(this.timer);
@@ -97,7 +102,8 @@ export class Pomodoro {
 
   reset(): void {
     this.pause();
-    this.state.timeRemaining = this.getSessionDuration(this.state.currentSession) * 60;
+    this.state.timeRemaining =
+      this.getSessionDuration(this.state.currentSession) * 60;
     this.onTick?.(this.getState());
   }
 
@@ -125,19 +131,23 @@ export class Pomodoro {
     const completedSession = this.state.currentSession;
     this.onSessionComplete?.(completedSession);
 
-    if (completedSession === 'work') {
+    if (completedSession === "work") {
       this.state.completedPomodoros++;
 
-      if (this.state.completedPomodoros % this.config.pomodorosBeforeLongBreak === 0) {
-        this.state.currentSession = 'longBreak';
+      if (
+        this.state.completedPomodoros % this.config.pomodorosBeforeLongBreak ===
+        0
+      ) {
+        this.state.currentSession = "longBreak";
       } else {
-        this.state.currentSession = 'shortBreak';
+        this.state.currentSession = "shortBreak";
       }
     } else {
-      this.state.currentSession = 'work';
+      this.state.currentSession = "work";
     }
 
-    this.state.timeRemaining = this.getSessionDuration(this.state.currentSession) * 60;
+    this.state.timeRemaining =
+      this.getSessionDuration(this.state.currentSession) * 60;
     this.state.isRunning = false;
 
     if (this.timer) {
@@ -150,11 +160,11 @@ export class Pomodoro {
 
   private getSessionDuration(session: SessionType): number {
     switch (session) {
-      case 'work':
+      case "work":
         return this.config.workDuration;
-      case 'shortBreak':
+      case "shortBreak":
         return this.config.shortBreakDuration;
-      case 'longBreak':
+      case "longBreak":
         return this.config.longBreakDuration;
     }
   }
@@ -162,17 +172,17 @@ export class Pomodoro {
   formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
 
   getSessionLabel(session: SessionType): string {
     switch (session) {
-      case 'work':
-        return 'Work';
-      case 'shortBreak':
-        return 'Short Break';
-      case 'longBreak':
-        return 'Long Break';
+      case "work":
+        return "Work";
+      case "shortBreak":
+        return "Short Break";
+      case "longBreak":
+        return "Long Break";
     }
   }
 }
