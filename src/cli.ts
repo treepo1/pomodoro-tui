@@ -3,6 +3,7 @@ import { DEFAULT_CONFIG, type PomodoroConfig } from "./types";
 import { normalizeSessionCode, validateSessionCode } from "./jam";
 import { performUpdate, getCurrentVersion } from "./updater";
 import type { MusicMode } from "./music";
+import { PETS, DEFAULT_PET_ID } from "./pets";
 
 export interface JamConfig {
   enabled: boolean;
@@ -18,6 +19,7 @@ export interface AppConfig {
   musicMode: MusicMode;
   volume?: number;
   jam: JamConfig;
+  petId: string;
 }
 
 export function showHelp(): void {
@@ -34,6 +36,7 @@ Options:
   -d, --data <path>        Path to history JSON file (default: ~/.pomodoro/history.json)
   -m, --music <mode>       Music mode: radio, off (default: radio)
   -V, --volume <0-100>     Music volume level (default: 50)
+  -p, --pet <type>         Pet type: ${PETS.map(p => p.id).join(", ")} (default: ${DEFAULT_PET_ID})
   -v, --version            Show version number
   --update                 Check for and install updates
   -h, --help               Show this help message
@@ -56,6 +59,7 @@ Examples:
 Controls:
   [s] Start    [p] Pause    [r] Reset    [n] Next    [q] Quit
   [m] Toggle music    [>] Next station    [+/-] Volume up/down
+  [P] Change pet
   (In jam mode, only the host can control the timer)
 
 Music:
@@ -92,6 +96,7 @@ export function parseConfig(): AppConfig | null {
         data: { type: "string", short: "d" },
         music: { type: "string", short: "m" },
         volume: { type: "string", short: "V" },
+        pet: { type: "string", short: "p" },
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
         update: { type: "boolean" },
@@ -173,6 +178,16 @@ export function parseConfig(): AppConfig | null {
       volume = vol;
     }
 
+    let petId = DEFAULT_PET_ID;
+    if (values.pet) {
+      const validPetIds = PETS.map(p => p.id);
+      if (!validPetIds.includes(values.pet)) {
+        console.error(`Error: Pet must be one of: ${validPetIds.join(", ")}`);
+        process.exit(1);
+      }
+      petId = values.pet;
+    }
+
     const jamEnabled = values.host || !!values.join;
     const isHost = values.host || false;
     const sessionCode = values.join
@@ -205,6 +220,7 @@ export function parseConfig(): AppConfig | null {
       musicMode,
       volume,
       jam,
+      petId,
     };
   } catch (error) {
     if (error instanceof Error) {

@@ -5,7 +5,11 @@ import { Pomodoro } from "./pomodoro";
 import { HistoryManager } from "./history";
 import { MusicManager } from "./music";
 import { JamManager, validateSessionCode, normalizeSessionCode } from "./jam";
-import type { PomodoroState, JamParticipant, JamConnectionState } from "./types";
+import type {
+  PomodoroState,
+  JamParticipant,
+  JamConnectionState,
+} from "./types";
 import { checkForUpdates } from "./updater";
 import { parseConfig } from "./cli";
 import { getSessionDuration, notifyUser } from "./utils";
@@ -21,6 +25,7 @@ import {
 } from "./components";
 import { ProjectManager, type Project } from "./projects";
 import { SettingsManager } from "./settings";
+import { getNextPetId, DEFAULT_PET_ID } from "./pets";
 
 interface PomodoroTUIProps {
   config: ReturnType<typeof parseConfig> & {};
@@ -32,21 +37,25 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
   const savedMusicSettings = settingsManager.getMusicSettings();
   const [pomodoro] = useState(() => new Pomodoro(config.pomodoro));
   const [history] = useState(() => new HistoryManager(config.historyFile));
-  const [music] = useState(() => new MusicManager(
-    config.musicMode,
-    config.volume !== undefined ? config.volume : savedMusicSettings.volume,
-    savedMusicSettings.stationIndex
-  ));
+  const [music] = useState(
+    () =>
+      new MusicManager(
+        config.musicMode,
+        config.volume !== undefined ? config.volume : savedMusicSettings.volume,
+        savedMusicSettings.stationIndex,
+      ),
+  );
   const [state, setState] = useState<PomodoroState>(pomodoro.getState());
   const [todayStats, setTodayStats] = useState(history.getTodayStats());
   const [musicStatus, setMusicStatus] = useState(music.getStatusText());
+  const [petId, setPetId] = useState(config.petId || DEFAULT_PET_ID);
   const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("timer");
   const [joinMode, setJoinMode] = useState(false);
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [editNameMode, setEditNameMode] = useState(false);
-  const [userName, setUserNameState] = useState(() =>
-    config.jam.participantName || settingsManager.getUserName()
+  const [userName, setUserNameState] = useState(
+    () => config.jam.participantName || settingsManager.getUserName(),
   );
   const [nameInput, setNameInput] = useState("");
 
@@ -57,9 +66,13 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
   // Project tracker state (all tasks belong to projects now)
   const [projectManager] = useState(() => new ProjectManager());
-  const [projects, setProjects] = useState<Project[]>(() => projectManager.getProjects());
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(() => projectManager.getCurrentProjectId());
-  
+  const [projects, setProjects] = useState<Project[]>(() =>
+    projectManager.getProjects(),
+  );
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(() =>
+    projectManager.getCurrentProjectId(),
+  );
+
   // Timer tab task state (operates on current project)
   const [timerSelectedTaskIndex, setTimerSelectedTaskIndex] = useState(0);
   const [timerAddTaskMode, setTimerAddTaskMode] = useState(false);
@@ -68,7 +81,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
   // Projects tab state
   const [selectedProjectIndex, setSelectedProjectIndex] = useState(0);
   const [selectedProjectTaskIndex, setSelectedProjectTaskIndex] = useState(0);
-  const [projectViewMode, setProjectViewMode] = useState<"list" | "detail">("list");
+  const [projectViewMode, setProjectViewMode] = useState<"list" | "detail">(
+    "list",
+  );
   const [addProjectMode, setAddProjectMode] = useState(false);
   const [projectInput, setProjectInput] = useState("");
   const [addProjectTaskMode, setAddProjectTaskMode] = useState(false);
@@ -80,16 +95,24 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
   const [jamConnectionState, setJamConnectionState] =
     useState<JamConnectionState>("disconnected");
   const [jamSessionCode, setJamSessionCode] = useState<string>("");
-  const [isCurrentHost, setIsCurrentHost] = useState<boolean>(config.jam.isHost);
+  const [isCurrentHost, setIsCurrentHost] = useState<boolean>(
+    config.jam.isHost,
+  );
 
   // Refs for stale closure avoidance
   const jamManagerRef = useRef<JamManager | null>(null);
   const jamParticipantsRef = useRef<JamParticipant[]>([]);
   const isCurrentHostRef = useRef<boolean>(config.jam.isHost);
 
-  useEffect(() => { jamManagerRef.current = jamManager; }, [jamManager]);
-  useEffect(() => { jamParticipantsRef.current = jamParticipants; }, [jamParticipants]);
-  useEffect(() => { isCurrentHostRef.current = isCurrentHost; }, [isCurrentHost]);
+  useEffect(() => {
+    jamManagerRef.current = jamManager;
+  }, [jamManager]);
+  useEffect(() => {
+    jamParticipantsRef.current = jamParticipants;
+  }, [jamParticipants]);
+  useEffect(() => {
+    isCurrentHostRef.current = isCurrentHost;
+  }, [isCurrentHost]);
 
   const isJamMode = jamManager !== null;
   const canControl = !isJamMode || isCurrentHost;
@@ -184,10 +207,11 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
         pomodoro,
         isHost: config.jam.isHost,
         sessionCode: config.jam.sessionCode,
-        participantName: config.jam.participantName || '',
+        participantName: config.jam.participantName || "",
         server: config.jam.server,
         onStateChange: () => setState(pomodoro.getState()),
-        onParticipantsChange: (participants) => setJamParticipants(participants),
+        onParticipantsChange: (participants) =>
+          setJamParticipants(participants),
         onConnectionChange: (connState) => setJamConnectionState(connState),
         onHostChange: (isHost) => setIsCurrentHost(isHost),
       });
@@ -205,20 +229,22 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
   // Helper to get project stats
   const getProjectStats = (id: string) => projectManager.getProjectStats(id);
-  
+
   // Get current project and its data
   const currentProject = projectManager.getCurrentProject();
-  const currentProjectStats = currentProject 
-    ? getProjectStats(currentProject.id) 
+  const currentProjectStats = currentProject
+    ? getProjectStats(currentProject.id)
     : { total: 0, completed: 0, percentage: 0 };
   const currentProjectTasks = currentProject?.tasks || [];
-  const currentProjectIndex = projects.findIndex(p => p.id === currentProjectId);
+  const currentProjectIndex = projects.findIndex(
+    (p) => p.id === currentProjectId,
+  );
 
   // Helper to get tasks sorted (pending first, then completed)
   const getSortedTasks = (project: Project | null) => {
     if (!project) return [];
-    const pending = project.tasks.filter(t => !t.completed);
-    const completed = project.tasks.filter(t => t.completed);
+    const pending = project.tasks.filter((t) => !t.completed);
+    const completed = project.tasks.filter((t) => t.completed);
     return [...pending, ...completed];
   };
 
@@ -238,7 +264,11 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
     // Add project mode (Projects tab)
     if (addProjectMode) {
-      if (isEscape) { setAddProjectMode(false); setProjectInput(""); return; }
+      if (isEscape) {
+        setAddProjectMode(false);
+        setProjectInput("");
+        return;
+      }
       if (isReturn) {
         if (projectInput.trim().length > 0) {
           const newProject = projectManager.createProject(projectInput.trim());
@@ -249,31 +279,65 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
             setCurrentProjectId(newProject.id);
           }
         }
-        setAddProjectMode(false); setProjectInput(""); return;
+        setAddProjectMode(false);
+        setProjectInput("");
+        return;
       }
-      if (isBackspace || isDelete) { setProjectInput((p) => p.slice(0, -1)); return; }
-      if (input && input.length === 1 && input.charCodeAt(0) >= 32) setProjectInput((p) => p + input);
+      if (key.backspace || key.delete) {
+        setProjectInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (isBackspace || isDelete) {
+        setProjectInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (input && input.length === 1 && input.charCodeAt(0) >= 32)
+        setProjectInput((p) => p + input);
       return;
     }
 
     // Add project task mode (Projects tab detail view)
     if (addProjectTaskMode) {
-      if (isEscape) { setAddProjectTaskMode(false); setProjectTaskInput(""); return; }
+      if (isEscape) {
+        setAddProjectTaskMode(false);
+        setProjectTaskInput("");
+        return;
+      }
       if (isReturn) {
-        if (projectTaskInput.trim().length > 0 && projects[selectedProjectIndex]) {
-          projectManager.addTask(projects[selectedProjectIndex].id, projectTaskInput.trim());
+        if (
+          projectTaskInput.trim().length > 0 &&
+          projects[selectedProjectIndex]
+        ) {
+          projectManager.addTask(
+            projects[selectedProjectIndex].id,
+            projectTaskInput.trim(),
+          );
           setProjects(projectManager.getProjects());
         }
-        setAddProjectTaskMode(false); setProjectTaskInput(""); return;
+        setAddProjectTaskMode(false);
+        setProjectTaskInput("");
+        return;
       }
-      if (isBackspace || isDelete) { setProjectTaskInput((p) => p.slice(0, -1)); return; }
-      if (input && input.length === 1 && input.charCodeAt(0) >= 32) setProjectTaskInput((p) => p + input);
+      if (key.backspace || key.delete) {
+        setProjectTaskInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (isBackspace || isDelete) {
+        setProjectTaskInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (input && input.length === 1 && input.charCodeAt(0) >= 32)
+        setProjectTaskInput((p) => p + input);
       return;
     }
 
     // Add task mode (Timer tab - adds to current project)
     if (timerAddTaskMode) {
-      if (isEscape) { setTimerAddTaskMode(false); setTimerTaskInput(""); return; }
+      if (isEscape) {
+        setTimerAddTaskMode(false);
+        setTimerTaskInput("");
+        return;
+      }
       if (isReturn) {
         if (timerTaskInput.trim().length > 0) {
           // Auto-create "General" project if no projects exist
@@ -282,39 +346,68 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
           setProjects(projectManager.getProjects());
           setCurrentProjectId(projectManager.getCurrentProjectId());
         }
-        setTimerAddTaskMode(false); setTimerTaskInput(""); return;
+        setTimerAddTaskMode(false);
+        setTimerTaskInput("");
+        return;
       }
-      if (isBackspace || isDelete) { setTimerTaskInput((p) => p.slice(0, -1)); return; }
-      if (input && input.length === 1 && input.charCodeAt(0) >= 32) setTimerTaskInput((p) => p + input);
+      if (key.backspace || key.delete) {
+        setTimerTaskInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (isBackspace || isDelete) {
+        setTimerTaskInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (input && input.length === 1 && input.charCodeAt(0) >= 32)
+        setTimerTaskInput((p) => p + input);
       return;
     }
 
     // Name edit mode
     if (editNameMode) {
-      if (isEscape) { setEditNameMode(false); setNameInput(""); return; }
+      if (isEscape) {
+        setEditNameMode(false);
+        setNameInput("");
+        return;
+      }
       if (isReturn) {
         if (nameInput.trim().length > 0) setUserName(nameInput.trim());
-        setEditNameMode(false); setNameInput(""); return;
+        setEditNameMode(false);
+        setNameInput("");
+        return;
       }
-      if (isBackspace || isDelete) { setNameInput((p) => p.slice(0, -1)); return; }
-      if (input && input.length === 1 && input.charCodeAt(0) >= 32) setNameInput((p) => (p + input).slice(0, 20));
+      if (isBackspace || isDelete) {
+        setNameInput((p) => p.slice(0, -1));
+        return;
+      }
+      if (input && input.length === 1 && input.charCodeAt(0) >= 32)
+        setNameInput((p) => (p + input).slice(0, 20));
       return;
     }
 
     // Join mode
     if (joinMode) {
-      if (isEscape) { setJoinMode(false); setJoinCodeInput(""); return; }
+      if (isEscape) {
+        setJoinMode(false);
+        setJoinCodeInput("");
+        return;
+      }
       if (isReturn) {
         if (joinCodeInput.length >= 6) {
           joinSession(joinCodeInput);
-          setJoinMode(false); setJoinCodeInput("");
+          setJoinMode(false);
+          setJoinCodeInput("");
         }
         return;
       }
-      if (isBackspace || isDelete) { setJoinCodeInput((p) => p.slice(0, -1)); return; }
+      if (isBackspace || isDelete) {
+        setJoinCodeInput((p) => p.slice(0, -1));
+        return;
+      }
       if (input && input.length === 1) {
         const cleaned = input.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-        if (cleaned.length > 0) setJoinCodeInput((p) => (p + cleaned).slice(0, 6));
+        if (cleaned.length > 0)
+          setJoinCodeInput((p) => (p + cleaned).slice(0, 6));
       }
       return;
     }
@@ -326,7 +419,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       // Switch to previous project with [
       if (input === "[") {
         if (projects.length > 0) {
-          const currentIdx = projects.findIndex(p => p.id === currentProjectId);
+          const currentIdx = projects.findIndex(
+            (p) => p.id === currentProjectId,
+          );
           const newIdx = currentIdx <= 0 ? projects.length - 1 : currentIdx - 1;
           projectManager.setCurrentProject(projects[newIdx].id);
           setCurrentProjectId(projects[newIdx].id);
@@ -339,7 +434,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       // Switch to next project with ]
       if (input === "]") {
         if (projects.length > 0) {
-          const currentIdx = projects.findIndex(p => p.id === currentProjectId);
+          const currentIdx = projects.findIndex(
+            (p) => p.id === currentProjectId,
+          );
           const newIdx = (currentIdx + 1) % projects.length;
           projectManager.setCurrentProject(projects[newIdx].id);
           setCurrentProjectId(projects[newIdx].id);
@@ -352,7 +449,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       // Task navigation with Up/Down arrows
       if (isUpArrow) {
         if (sortedTasks.length > 0) {
-          setTimerSelectedTaskIndex((p) => (p - 1 + sortedTasks.length) % sortedTasks.length);
+          setTimerSelectedTaskIndex(
+            (p) => (p - 1 + sortedTasks.length) % sortedTasks.length,
+          );
         }
         return;
       }
@@ -364,8 +463,15 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       }
 
       // Toggle task with Space
-      if (input === " " && currentProject && sortedTasks[timerSelectedTaskIndex]) {
-        projectManager.toggleTask(currentProject.id, sortedTasks[timerSelectedTaskIndex].id);
+      if (
+        input === " " &&
+        currentProject &&
+        sortedTasks[timerSelectedTaskIndex]
+      ) {
+        projectManager.toggleTask(
+          currentProject.id,
+          sortedTasks[timerSelectedTaskIndex].id,
+        );
         setProjects(projectManager.getProjects());
         return;
       }
@@ -378,11 +484,20 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       }
 
       // Delete task with 'd'
-      if (input === "d" && currentProject && sortedTasks[timerSelectedTaskIndex]) {
-        projectManager.deleteTask(currentProject.id, sortedTasks[timerSelectedTaskIndex].id);
+      if (
+        input === "d" &&
+        currentProject &&
+        sortedTasks[timerSelectedTaskIndex]
+      ) {
+        projectManager.deleteTask(
+          currentProject.id,
+          sortedTasks[timerSelectedTaskIndex].id,
+        );
         setProjects(projectManager.getProjects());
         // Adjust selection
-        const newSortedTasks = getSortedTasks(projectManager.getProject(currentProject.id) || null);
+        const newSortedTasks = getSortedTasks(
+          projectManager.getProject(currentProject.id) || null,
+        );
         if (timerSelectedTaskIndex >= newSortedTasks.length) {
           setTimerSelectedTaskIndex(Math.max(0, newSortedTasks.length - 1));
         }
@@ -396,7 +511,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       if (projectViewMode === "list") {
         if (input === "," || input === "<") {
           if (projects.length > 0) {
-            setSelectedProjectIndex((p) => (p - 1 + projects.length) % projects.length);
+            setSelectedProjectIndex(
+              (p) => (p - 1 + projects.length) % projects.length,
+            );
           }
           return;
         }
@@ -443,7 +560,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
         // Navigate tasks with Up/Down
         if (isUpArrow && allProjectTasks.length > 0) {
-          setSelectedProjectTaskIndex((p) => (p - 1 + allProjectTasks.length) % allProjectTasks.length);
+          setSelectedProjectTaskIndex(
+            (p) => (p - 1 + allProjectTasks.length) % allProjectTasks.length,
+          );
           return;
         }
         if (isDownArrow && allProjectTasks.length > 0) {
@@ -453,7 +572,10 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
         // Toggle task with Space
         if (input === " " && allProjectTasks[selectedProjectTaskIndex]) {
-          projectManager.toggleTask(project.id, allProjectTasks[selectedProjectTaskIndex].id);
+          projectManager.toggleTask(
+            project.id,
+            allProjectTasks[selectedProjectTaskIndex].id,
+          );
           setProjects(projectManager.getProjects());
           return;
         }
@@ -467,7 +589,10 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
 
         // Delete task with 'd'
         if (input === "d" && allProjectTasks[selectedProjectTaskIndex]) {
-          projectManager.deleteTask(project.id, allProjectTasks[selectedProjectTaskIndex].id);
+          projectManager.deleteTask(
+            project.id,
+            allProjectTasks[selectedProjectTaskIndex].id,
+          );
           setProjects(projectManager.getProjects());
           const updatedProject = projectManager.getProject(project.id);
           const newAllTasks = getSortedTasks(updatedProject || null);
@@ -495,7 +620,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       return;
     }
     if (isLeftArrow) {
-      setActiveTab((p) => TABS[(TABS.indexOf(p) - 1 + TABS.length) % TABS.length]);
+      setActiveTab(
+        (p) => TABS[(TABS.indexOf(p) - 1 + TABS.length) % TABS.length],
+      );
       return;
     }
 
@@ -532,13 +659,16 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
     } else if (input === "-" || input === "_") {
       music.volumeDown();
       setMusicStatus(music.getStatusText());
-      settingsManager.setMusicVolume(music.getVolume());
+    } else if (input === "P") {
+      setPetId((current) => getNextPetId(current));
     } else if (input === "h" && activeTab === "group" && !jamManager) {
       startHosting();
     } else if (input === "j" && activeTab === "group" && !jamManager) {
-      setJoinMode(true); setJoinCodeInput("");
+      setJoinMode(true);
+      setJoinCodeInput("");
     } else if (input === "e" && activeTab === "group" && !jamManager) {
-      setEditNameMode(true); setNameInput(userName);
+      setEditNameMode(true);
+      setNameInput(userName);
     } else if (input === "l" && activeTab === "group" && jamManager) {
       stopSession();
     } else if (/^[1-9]$/.test(input || "")) {
@@ -547,9 +677,12 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       const amHost = isCurrentHostRef.current;
       if (amHost && manager) {
         const myId = manager.getParticipantId();
-        const otherParticipants = participants.filter((p) => p.id !== myId && !p.isHost);
+        const otherParticipants = participants.filter(
+          (p) => p.id !== myId && !p.isHost,
+        );
         const index = parseInt(input || "0", 10) - 1;
-        if (index < otherParticipants.length) manager.transferHost(otherParticipants[index].id);
+        if (index < otherParticipants.length)
+          manager.transferHost(otherParticipants[index].id);
       }
     }
   });
@@ -560,11 +693,22 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
   const padding = isNarrow ? 1 : 2;
 
   return (
-    <box flexDirection="column" border borderStyle="rounded" borderColor="yellow" padding={padding}>
+    <box
+      flexDirection="column"
+      border
+      borderStyle="rounded"
+      borderColor="yellow"
+      padding={padding}
+    >
       <Tabs activeTab={activeTab} onTabClick={(tab) => setActiveTab(tab)} />
 
       {updateAvailable && (
-        <box marginTop={1} marginBottom={1} flexDirection="column" alignItems="center">
+        <box
+          marginTop={1}
+          marginBottom={1}
+          flexDirection="column"
+          alignItems="center"
+        >
           <text fg="yellow">Update available: {updateAvailable}</text>
           <text fg="gray">(run pomotui --update)</text>
         </box>
@@ -583,6 +727,7 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
           jamManagerId={jamManager?.getParticipantId()}
           todayStats={todayStats}
           musicStatus={musicStatus}
+          petId={petId}
           formatTime={pomodoro.formatTime.bind(pomodoro)}
           currentProject={currentProject}
           projectTasks={currentProjectTasks}
@@ -597,7 +742,10 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
             if (currentProject) {
               const sortedTasks = getSortedTasks(currentProject);
               if (sortedTasks[idx]) {
-                projectManager.toggleTask(currentProject.id, sortedTasks[idx].id);
+                projectManager.toggleTask(
+                  currentProject.id,
+                  sortedTasks[idx].id,
+                );
                 setProjects(projectManager.getProjects());
               }
               setTimerSelectedTaskIndex(idx);
@@ -636,11 +784,14 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
             }
           }}
           onTaskClick={(idx) => {
-            if (projectViewMode === "detail" && projects[selectedProjectIndex]) {
+            if (
+              projectViewMode === "detail" &&
+              projects[selectedProjectIndex]
+            ) {
               // Toggle the task on click
               const project = projects[selectedProjectIndex];
-              const pendingTasks = project.tasks.filter(t => !t.completed);
-              const completedTasks = project.tasks.filter(t => t.completed);
+              const pendingTasks = project.tasks.filter((t) => !t.completed);
+              const completedTasks = project.tasks.filter((t) => t.completed);
               const allTasks = [...pendingTasks, ...completedTasks];
               if (allTasks[idx]) {
                 projectManager.toggleTask(project.id, allTasks[idx].id);
@@ -653,9 +804,9 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
       )}
 
       {activeTab === "stats" && (
-        <StatsTab 
-          state={state} 
-          config={config.pomodoro} 
+        <StatsTab
+          state={state}
+          config={config.pomodoro}
           todayStats={todayStats}
           weekStats={history.getWeekStats()}
           monthStats={history.getMonthStats()}
@@ -690,6 +841,7 @@ function PomodoroTUI({ config, onExit }: PomodoroTUIProps) {
         canControl={canControl}
         isCurrentHost={isCurrentHost}
         showTransferHint={jamParticipants.length > 1}
+        petId={petId}
       />
     </box>
   );
@@ -699,26 +851,28 @@ const config = parseConfig();
 if (config) {
   (async () => {
     let completedPomodoros = 0;
-    
+
     const renderer = await createCliRenderer({
       exitOnCtrlC: false,
       onDestroy: () => {
-        console.log(`\nGoodbye! You completed ${completedPomodoros} pomodoros.`);
+        console.log(
+          `\nGoodbye! You completed ${completedPomodoros} pomodoros.`,
+        );
         process.exit(0);
       },
     });
-    
+
     const root = createRoot(renderer);
     root.render(
-      <PomodoroTUI 
-        config={config} 
+      <PomodoroTUI
+        config={config}
         onExit={(completed) => {
           completedPomodoros = completed;
           // Unmount the React tree first, then destroy the renderer
           root.unmount();
           renderer.destroy();
-        }} 
-      />
+        }}
+      />,
     );
   })();
 }

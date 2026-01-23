@@ -1,18 +1,29 @@
 import { TextAttributes, type MouseEvent } from "@opentui/core";
 import { useTerminalDimensions } from "@opentui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { PomodoroState, PomodoroConfig, JamParticipant } from "../types";
 import { renderBigText, getOptimalTimerMode, getBigTextWidth } from "../ui";
-import { getSessionColor, getSessionLabel, getSessionDuration, getConnectionDisplay } from "../utils";
+import {
+  getSessionColor,
+  getSessionLabel,
+  getSessionDuration,
+  getConnectionDisplay,
+} from "../utils";
 import type { JamConnectionState } from "../types";
 import { TaskList } from "./TaskList";
 import type { Project, ProjectTask } from "../projects";
+import {
+  getPetById,
+  getPetFrame,
+  PET_ANIMATION_INTERVAL_MS,
+  type Pet,
+} from "../pets";
 
 // Layout breakpoints based on total terminal width
 const BREAKPOINTS = {
-  SHOW_TASK_LIST: 100,     // Show task list sidebar
-  FULL_LAYOUT: 80,         // Full layout with spacer
-  COMPACT_MODE: 50,        // Use very compact layout
+  SHOW_TASK_LIST: 100, // Show task list sidebar
+  FULL_LAYOUT: 80, // Full layout with spacer
+  COMPACT_MODE: 50, // Use very compact layout
 };
 
 interface TimerTabProps {
@@ -27,6 +38,7 @@ interface TimerTabProps {
   jamManagerId?: string;
   todayStats: { pomodoros: number; totalMinutes: number };
   musicStatus: string;
+  petId: string;
   formatTime: (seconds: number) => string;
   // Project-based task props
   currentProject: Project | null;
@@ -43,25 +55,25 @@ interface TimerTabProps {
 }
 
 // Play/Pause button component with hover effect
-function PlayPauseButton({ 
-  isRunning, 
+function PlayPauseButton({
+  isRunning,
   onClick,
   canControl = true,
-}: { 
+}: {
   isRunning: boolean;
   onClick?: () => void;
   canControl?: boolean;
 }) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   // Icons: ▶ (play), ⏸ (pause), ⏵ (play alternative)
-  const playIcon = "\u25B6";  // ▶
+  const playIcon = "\u25B6"; // ▶
   const pauseIcon = "\u23F8"; // ⏸
-  
+
   const icon = isRunning ? pauseIcon : playIcon;
   const label = isRunning ? "RUNNING" : "PAUSED";
   const color = isRunning ? "green" : isHovered ? "cyan" : "yellow";
-  
+
   if (!canControl) {
     // Show status without click interaction for non-hosts in jam mode
     return (
@@ -72,20 +84,25 @@ function PlayPauseButton({
       </box>
     );
   }
-  
+
   return (
-    <box 
-      marginTop={1} 
+    <box
+      marginTop={1}
       marginBottom={1}
       onMouseOver={() => setIsHovered(true)}
       onMouseOut={() => setIsHovered(false)}
-      onMouseUp={onClick ? (e: MouseEvent) => {
-        e.stopPropagation();
-        onClick();
-      } : undefined}
+      onMouseUp={
+        onClick
+          ? (e: MouseEvent) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
     >
       <text fg={color} attributes={isHovered ? TextAttributes.BOLD : undefined}>
-        {icon} {isHovered ? (isRunning ? "CLICK TO PAUSE" : "CLICK TO START") : label}
+        {icon}{" "}
+        {isHovered ? (isRunning ? "CLICK TO PAUSE" : "CLICK TO START") : label}
       </text>
     </box>
   );
@@ -103,6 +120,7 @@ export function TimerTab({
   jamManagerId,
   todayStats,
   musicStatus,
+  petId,
   formatTime,
   currentProject,
   projectTasks,
@@ -116,42 +134,66 @@ export function TimerTab({
   onToggleTimer,
 }: TimerTabProps) {
   const { width: termWidth } = useTerminalDimensions();
-  
+
   // Determine layout based on terminal width
   const showTaskList = termWidth >= BREAKPOINTS.SHOW_TASK_LIST;
   const showLeftSpacer = termWidth >= BREAKPOINTS.FULL_LAYOUT && showTaskList;
   const isCompact = termWidth < BREAKPOINTS.COMPACT_MODE;
-  
+
   // Calculate available width for timer content
   // Terminal width minus: borders (2), padding (4), task list (32 if shown)
   const usedWidth = 6 + (showTaskList ? 32 : 0) + (showLeftSpacer ? 20 : 0);
   const availableWidth = Math.max(15, termWidth - usedWidth);
-  
+
   // Get optimal timer display mode based on available space
   const timerMode = getOptimalTimerMode(availableWidth);
-  
+
   const time = formatTime(state.timeRemaining);
   const session = state.currentSession;
   const color = getSessionColor(session);
   const label = getSessionLabel(session);
   const sessionDuration = getSessionDuration(session, config) || 1;
   const progress = (state.timeRemaining / (sessionDuration * 60)) * 100;
-  
+
   // Calculate timer display width to help with progress bar sizing
   const timerDisplayWidth = getBigTextWidth(time, timerMode);
-  
+
   // Responsive progress bar length - match timer width or available space
   const progressBarLength = Math.min(
     timerMode === "small" ? 20 : timerDisplayWidth,
-    Math.max(10, availableWidth - 2)
+    Math.max(10, availableWidth - 2),
   );
-  const filledLength = Math.max(0, Math.min(progressBarLength, Math.round((progressBarLength * progress) / 100)));
+  const filledLength = Math.max(
+    0,
+    Math.min(
+      progressBarLength,
+      Math.round((progressBarLength * progress) / 100),
+    ),
+  );
   const progressBar =
-    "\u2588".repeat(filledLength) + "\u2591".repeat(progressBarLength - filledLength);
+    "\u2588".repeat(filledLength) +
+    "\u2591".repeat(progressBarLength - filledLength);
 
   const bigTimeLines = renderBigText(time, timerMode);
   const connDisplay = getConnectionDisplay(jamConnectionState);
 
+  // Pet animation
+  const [petFrame, setPetFrame] = useState(0);
+  const pet = getPetById(petId);
+  const isMusicPlaying =
+    !musicStatus.includes("(paused)") && !musicStatus.includes("Off");
+
+  useEffect(() => {
+    if (!isMusicPlaying || !pet || pet.id === "none") return;
+
+    const interval = setInterval(() => {
+      setPetFrame((prev) => (prev + 1) % pet.frames.length);
+    }, PET_ANIMATION_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [isMusicPlaying, pet?.id]);
+
+  const dancingPet = isMusicPlaying && pet ? getPetFrame(pet, petFrame) : "";
   // Ultra compact layout for very small terminals
   if (isCompact) {
     return (
@@ -164,18 +206,20 @@ export function TimerTab({
           <text attributes={TextAttributes.BOLD} fg="yellow">
             {time}
           </text>
-          {!state.isRunning && (
-            <text fg="yellow"> [P]</text>
-          )}
+          {!state.isRunning && <text fg="yellow"> [P]</text>}
         </box>
         <box marginBottom={1}>
           <text fg={color}>{progressBar}</text>
         </box>
         {isJamMode && (
-          <text fg="yellow" attributes={TextAttributes.DIM}>JAM: {jamSessionCode}</text>
+          <text fg="yellow" attributes={TextAttributes.DIM}>
+            JAM: {jamSessionCode}
+          </text>
         )}
         {!isJamMode && (
-          <text fg="gray" attributes={TextAttributes.DIM}>Today: {todayStats.pomodoros}p ({todayStats.totalMinutes}m)</text>
+          <text fg="gray" attributes={TextAttributes.DIM}>
+            Today: {todayStats.pomodoros}p ({todayStats.totalMinutes}m)
+          </text>
         )}
       </box>
     );
@@ -193,24 +237,30 @@ export function TimerTab({
             [ {label} ]
           </text>
         </box>
-        
+
         {/* Big Timer Display */}
-        <box marginTop={1} marginBottom={1} flexDirection="column" alignItems="center" height={bigTimeLines.length}>
+        <box
+          marginTop={1}
+          marginBottom={1}
+          flexDirection="column"
+          alignItems="center"
+          height={bigTimeLines.length}
+        >
           {bigTimeLines.map((line, i) => (
             <text key={i} attributes={TextAttributes.BOLD} fg="yellow">
               {line}
             </text>
           ))}
         </box>
-        
+
         {/* Progress Bar */}
         <box marginTop={1} marginBottom={1}>
           <text fg={color}>{progressBar}</text>
         </box>
-        
+
         {/* Play/Pause Button - clickable */}
-        <PlayPauseButton 
-          isRunning={state.isRunning} 
+        <PlayPauseButton
+          isRunning={state.isRunning}
           onClick={onToggleTimer}
           canControl={canControl}
         />
@@ -218,7 +268,7 @@ export function TimerTab({
         {/* Jam Session Info */}
         {isJamMode && (
           <>
-            <box marginTop={1} marginBottom={1} flexDirection="column" alignItems="center">
+            <box marginTop={1} flexDirection="column" alignItems="center">
               <text fg="yellow" attributes={TextAttributes.BOLD}>
                 JAM SESSION: {jamSessionCode}
               </text>
@@ -230,7 +280,7 @@ export function TimerTab({
             </box>
 
             {jamParticipants.length > 0 && (
-              <box marginTop={1} marginBottom={1} flexDirection="column" alignItems="center">
+              <box marginTop={1} flexDirection="column" alignItems="center">
                 <text fg="gray">Participants ({jamParticipants.length}):</text>
                 {(() => {
                   let transferIndex = 0;
@@ -256,7 +306,7 @@ export function TimerTab({
             )}
 
             {!canControl && (
-              <box marginTop={1} marginBottom={1}>
+              <box marginTop={1}>
                 <text fg="gray" attributes={TextAttributes.DIM}>
                   Only the host can control the timer
                 </text>
@@ -264,7 +314,7 @@ export function TimerTab({
             )}
 
             {isCurrentHost && (
-              <box marginTop={1} marginBottom={1}>
+              <box marginTop={1}  marginBottom={1}>
                 <text fg="gray">Share: pomotui --join {jamSessionCode}</text>
               </box>
             )}
@@ -273,23 +323,28 @@ export function TimerTab({
 
         {/* Stats when not in jam mode */}
         {!isJamMode && (
-          <box marginTop={1} marginBottom={1}>
+          <box>
             <text fg="gray">
-              Today: {todayStats.pomodoros} pomodoros ({todayStats.totalMinutes}m)
+              Today: {todayStats.pomodoros} pomodoros ({todayStats.totalMinutes}
+              m)
             </text>
           </box>
         )}
-        
+
         {/* Config info */}
-        <box marginTop={1} marginBottom={1}>
+        <box>
           <text fg="gray">
-            Work: {config.workDuration}m | Short: {config.shortBreakDuration}m | Long: {config.longBreakDuration}m
+            Work: {config.workDuration}m | Short: {config.shortBreakDuration}m |
+            Long: {config.longBreakDuration}m
           </text>
         </box>
-        
+
         {/* Music status */}
-        <box marginTop={1} marginBottom={1}>
-          <text fg="magenta">{musicStatus}</text>
+        <box marginTop={1}>
+          <text fg="magenta">
+            {" "}
+            {musicStatus} {dancingPet}
+          </text>
         </box>
       </box>
 

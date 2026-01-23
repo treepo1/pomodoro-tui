@@ -5,28 +5,33 @@ interface ControlsProps {
   canControl: boolean;
   isCurrentHost: boolean;
   showTransferHint: boolean;
+  petId: string;
 }
 
-export function Controls({ canControl, isCurrentHost, showTransferHint }: ControlsProps) {
+export function Controls({
+  canControl,
+  isCurrentHost,
+  showTransferHint,
+  petId,
+}: ControlsProps) {
   const { width } = useTerminalDimensions();
-  
+
   // Use shorter labels on narrow terminals
   const isCompact = width < 70;
-  
+
   const fullControls = canControl
-    ? "[S]tart [P]ause [R]eset [N]ext [Q]uit [M]usic [>]station"
-    : "[Q]uit [M]usic [>]station";
-  
-  const compactControls = canControl
     ? "[S]tart [P]ause [R]eset [N]ext [Q]uit"
-    : "[Q]uit [M]usic";
+    : "[Q]uit";
+
+  const musicControls = `[M]usic [>]station [+/-] Volume [Shift+P] Pet [${petId}]`;
 
   return (
     <>
       <box marginTop={1}>
-        <text fg="yellow">
-          {isCompact ? compactControls : fullControls}
-        </text>
+        <text fg="yellow">{fullControls}</text>
+      </box>
+      <box marginTop={1}>
+        <text fg="magenta">{musicControls}</text>
       </box>
       {isCurrentHost && showTransferHint && !isCompact && (
         <box>
